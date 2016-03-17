@@ -3,6 +3,8 @@ This software was created for the IPCAI 2016 submission:
 "Robust Near Real-Time Estimation of Physiological Parameters from Megapixel
 Multispectral Images with Inverse Monte Carlo and Random Forest Regression"
 
+If you use this software, please cite the paper.
+
 It features a small library to read and process multispectral images and a python wrapper for multi-layered Monte Carlo (MCML) models.
 
 MCML:
