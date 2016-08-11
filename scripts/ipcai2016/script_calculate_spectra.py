@@ -18,35 +18,39 @@ See LICENSE for details
 Created on Sep 9, 2015
 
 @author: wirkert
+
+Modified on August 8, 2016: Anant Vemuri
 '''
 
 import datetime
 import logging
 import os
 import time
+import cProfile
 
 import luigi
 import mc.factories as mcfac
 import numpy as np
 from mc.create_spectrum import create_spectrum
-from mc.sim import SimWrapper
+from mc.sim import SimWrapper, get_diffuse_reflectance
 
 import commons
 
+
 # parameter setting
-NR_BATCHES = 15
+NR_BATCHES = 2
 NR_ELEMENTS_IN_BATCH = 1000
 # the wavelengths to be simulated
-WAVELENGHTS = np.arange(450, 720, 2) * 10 ** -9
+WAVELENGHTS = np.arange(450, 720, 10) * 10 ** -9
 NR_PHOTONS = 10 ** 6
 
 # experiment configuration
-MCI_FILENAME = "./temp.mci"
-MCO_FILENAME = "temp.mco"
+#MCI_FILENAME = "./temp.mci"
+#MCO_FILENAME = "temp.mco"
 # this path definitly needs to be adapted by you
-PATH_TO_MCML = "/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
+PATH_TO_MCML = "/media/avemuri/DEV/MCML/fast-gpumcml/"
 EXEC_MCML = "gpumcml.sm_20"
-
+ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/"
 
 sc = commons.ScriptCommons()
 
@@ -60,19 +64,27 @@ class CreateSpectraTask(luigi.Task):
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("MC_DATA_FOLDER"),
                                               self.df_prefix + "_" +
-                                              str(self.batch_nr) + ".txt"))
+                                              str(self.batch_nr) + ".csv"))
 
     def run(self):
         start = time.time()
-        # setup simulation wrapper
+        # Setup simulation wrapper
         sim_wrapper = SimWrapper()
-        sim_wrapper.set_mci_filename(MCI_FILENAME)
         sim_wrapper.set_mcml_executable(os.path.join(PATH_TO_MCML, EXEC_MCML))
-        # setup model
+        sim_wrapper.set_mci_filename(str(self.df_prefix) + "_Bat_" + str(self.batch_nr) + ".mci")
+
+
+
+        # Setup tissue model
         tissue_model = self.factory.create_tissue_model()
         tissue_model.set_mci_filename(sim_wrapper.mci_filename)
-        tissue_model.set_mco_filename(MCO_FILENAME)
+        #tissue_model.set_mco_filename(MCO_FILENAME)
         tissue_model.set_nr_photons(NR_PHOTONS)
+        tissue_model._mci_wrapper.set_nr_runs(NR_ELEMENTS_IN_BATCH * WAVELENGHTS.shape[0])
+        tissue_model.create_mci_file()
+
+
+
         # setup array in which data shall be stored
         batch = self.factory.create_batch_to_simulate()
         batch.create_parameters(self.nr_samples)
@@ -82,24 +94,28 @@ class CreateSpectraTask(luigi.Task):
         for w in WAVELENGHTS:
             df["reflectances", w] = np.NAN
 
-        # for each instance of our tissue model
+        # Generate MCI file which contains list of all simulations in a Batch
         for i in range(df.shape[0]):
             # set the desired element in the dataframe to be simulated
+            base_mco_filename = \
+                str(self.df_prefix) + "_Sim_" + str(i) + "_Bat_" + str(self.batch_nr) + "_"
+            tissue_model.set_base_mco_filename(base_mco_filename)
             tissue_model.set_dataframe_row(df.loc[i, :])
-            logging.info("running simulation " + str(i) + " for\n" +
-                         str(tissue_model))
-            reflectances = create_spectrum(tissue_model, sim_wrapper,
-                                           WAVELENGHTS)
-            # store in dataframe
-            for r, w in zip(reflectances, WAVELENGHTS):
-                df["reflectances", w][i] = r
+            tissue_model.update_mci_file(WAVELENGHTS)
 
-        # clean up temporarily created files
-        os.remove(MCI_FILENAME)
-        created_mco_file = os.path.join(PATH_TO_MCML, MCO_FILENAME)
-        if os.path.isfile(created_mco_file):
-            os.remove(created_mco_file)
-        # save the created output
+        # Run simulations for computing reflectance from parameters
+        sim_wrapper.run_simulation()
+
+        # Load the MCO files and compute
+        for i in range(df.shape[0]):
+            for wavelength in WAVELENGHTS:
+                simulation_path = os.path.split(sim_wrapper.mcml_executable)[0]
+                base_mco_filename = \
+                    str(self.df_prefix) + "_Sim_" + str(i) + "_Bat_" + str(self.batch_nr) + "_"
+                mco_filename = base_mco_filename + str(wavelength) + '.mco'
+                df["reflectances",wavelength][i] = \
+                    get_diffuse_reflectance(os.path.join(simulation_path,mco_filename))
+
         f = open(self.output().path, 'w')
         df.to_csv(f)
 
@@ -111,7 +127,7 @@ class CreateSpectraTask(luigi.Task):
 if __name__ == '__main__':
 
     # create a folder for the results if necessary
-    sc.set_root("/media/wirkert/data/Data/2016_02_02_IPCAI/")
+    sc.set_root(ROOT_PATH)
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
@@ -132,7 +148,7 @@ if __name__ == '__main__':
         colon_test_task = CreateSpectraTask("ipcai_mean_scattering_test",
                                        i,
                                        NR_ELEMENTS_IN_BATCH,
-                                       mcfac.ColonMuscleMeanScatteringFactory())
+                                       mcfac.VisualizationMcFactory())
         colon_train_task = CreateSpectraTask("ipcai_mean_scattering_train",
                                        i,
                                        NR_ELEMENTS_IN_BATCH,

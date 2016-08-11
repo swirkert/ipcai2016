@@ -27,8 +27,7 @@ from mc.sim import MciWrapper, SimWrapper, \
                    get_total_reflectance, get_diffuse_reflectance
 
 
-path_to_gpumcml = "/home/wirkert/workspace/monteCarlo/gpumcml/" + \
-                                        "fast-gpumcml/gpumcml.sm_20"
+path_to_gpumcml = "/media/avemuri/DEV/MCML/fast-gpumcml/gpumcml.sm_20"
 skip_gpu_tests = not os.path.exists(path_to_gpumcml)
 
 
