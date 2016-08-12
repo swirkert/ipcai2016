@@ -38,8 +38,8 @@ import commons
 
 
 # parameter setting
-NR_BATCHES = 2
-NR_ELEMENTS_IN_BATCH = 2000
+NR_BATCHES = 15
+NR_ELEMENTS_IN_BATCH = 1000
 # the wavelengths to be simulated
 WAVELENGHTS = np.arange(450, 978, 2) * 10 ** -9
 NR_PHOTONS = 10 ** 6
@@ -84,6 +84,10 @@ class CreateSpectraTask(luigi.Task):
         tissue_model._mci_wrapper.set_nr_runs(
             NR_ELEMENTS_IN_BATCH * WAVELENGHTS.shape[0])
         tissue_model.create_mci_file()
+        # Organize the files
+        # os.rename(str(self.df_prefix)
+        #           + "_Bat_" + str(self.batch_nr) + ".mci",
+        #           )
 
 
 
@@ -106,6 +110,7 @@ class CreateSpectraTask(luigi.Task):
             tissue_model.set_dataframe_row(df.loc[i, :])
             tissue_model.update_mci_file(WAVELENGHTS)
 
+
         # Run simulations for computing reflectance from parameters
         sim_wrapper.run_simulation()
 
@@ -119,6 +124,8 @@ class CreateSpectraTask(luigi.Task):
                 mco_filename = base_mco_filename + str(wavelength) + '.mco'
                 df["reflectances",wavelength][i] = \
                     get_diffuse_reflectance(os.path.join(simulation_path,mco_filename))
+                os.remove(os.path.join(simulation_path,mco_filename))
+
 
         f = open(self.output().path, 'w')
         df.to_csv(f)

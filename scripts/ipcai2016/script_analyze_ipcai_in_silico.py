@@ -39,8 +39,12 @@ from sklearn.ensemble.forest import RandomForestRegressor
 import tasks_mc
 import commons
 
-INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/" \
-                  "results/final/"
+INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/"
+train = "ipcai_revision_colon_mean_scattering_train"
+test = "ipcai_revision_colon_mean_scattering_test"
+
+
+##########################################################
 
 sc = commons.ScriptCommons()
 
@@ -336,8 +340,7 @@ if __name__ == '__main__':
     logger.addHandler(ch)
     luigi.interface.setup_interface_logging()
 
-    train = "ipcai_colon_mean_scattering_train"
-    test = "ipcai_colon_mean_scattering_test"
+
 
     sch = luigi.scheduler.CentralPlannerScheduler()
     w = luigi.worker.Worker(scheduler=sch)
