@@ -27,7 +27,7 @@ https://code.google.com/p/gpumcml/
 Modified on August 8, 2016: Anant Vemuri
 '''
 
-import os
+import fcntl, os
 import contextlib
 import logging
 import time
@@ -195,8 +195,25 @@ class SimWrapper(object):
         # switch to folder where mcml resides in and execute it.
         with cd(mcml_path):
             try:
-                popen = subprocess32.Popen(args, stdout=subprocess32.PIPE)
-                #popen.wait(timeout=100)
+                mcml_exec = subprocess32.Popen(args)
+                # Fix the pipes to be nonblocking
+                # fcntl.fcntl(mcml_exec.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+                # fcntl.fcntl(mcml_exec.stderr.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+                #mcml_exec.stdin.write('\n\nsome_command_to_the_subprocess\n\n')
+                # mcml_exec.stdin.write('\n\n\nsome_command_to_the_subprocess\n\n\n')
+                # while True:
+                #     # Main loop
+                #     stdout = ''
+                #     stderr = ''
+                #
+                #     # Read from stdout
+                #     try:
+                #         stdout = mcml_exec.stdout.read()
+                #     except Exception:
+                #         pass
+
+
+                mcml_exec.wait(timeout=None)
             except:
                 logging.error("couldn't run simulation")
                 # popen.kill()

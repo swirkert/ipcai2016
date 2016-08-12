@@ -39,9 +39,9 @@ import commons
 
 # parameter setting
 NR_BATCHES = 2
-NR_ELEMENTS_IN_BATCH = 1000
+NR_ELEMENTS_IN_BATCH = 2000
 # the wavelengths to be simulated
-WAVELENGHTS = np.arange(450, 720, 10) * 10 ** -9
+WAVELENGHTS = np.arange(450, 978, 2) * 10 ** -9
 NR_PHOTONS = 10 ** 6
 
 # experiment configuration
@@ -50,7 +50,7 @@ NR_PHOTONS = 10 ** 6
 # this path definitly needs to be adapted by you
 PATH_TO_MCML = "/media/avemuri/DEV/MCML/fast-gpumcml/"
 EXEC_MCML = "gpumcml.sm_20"
-ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/"
+OUTPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData"
 
 sc = commons.ScriptCommons()
 
@@ -71,7 +71,8 @@ class CreateSpectraTask(luigi.Task):
         # Setup simulation wrapper
         sim_wrapper = SimWrapper()
         sim_wrapper.set_mcml_executable(os.path.join(PATH_TO_MCML, EXEC_MCML))
-        sim_wrapper.set_mci_filename(str(self.df_prefix) + "_Bat_" + str(self.batch_nr) + ".mci")
+        sim_wrapper.set_mci_filename(str(self.df_prefix)
+                                     + "_Bat_" + str(self.batch_nr) + ".mci")
 
 
 
@@ -80,7 +81,8 @@ class CreateSpectraTask(luigi.Task):
         tissue_model.set_mci_filename(sim_wrapper.mci_filename)
         #tissue_model.set_mco_filename(MCO_FILENAME)
         tissue_model.set_nr_photons(NR_PHOTONS)
-        tissue_model._mci_wrapper.set_nr_runs(NR_ELEMENTS_IN_BATCH * WAVELENGHTS.shape[0])
+        tissue_model._mci_wrapper.set_nr_runs(
+            NR_ELEMENTS_IN_BATCH * WAVELENGHTS.shape[0])
         tissue_model.create_mci_file()
 
 
@@ -98,7 +100,8 @@ class CreateSpectraTask(luigi.Task):
         for i in range(df.shape[0]):
             # set the desired element in the dataframe to be simulated
             base_mco_filename = \
-                str(self.df_prefix) + "_Sim_" + str(i) + "_Bat_" + str(self.batch_nr) + "_"
+                str(self.df_prefix) + "_Sim_" + str(i) + "_Bat_" \
+                + str(self.batch_nr) + "_"
             tissue_model.set_base_mco_filename(base_mco_filename)
             tissue_model.set_dataframe_row(df.loc[i, :])
             tissue_model.update_mci_file(WAVELENGHTS)
@@ -111,7 +114,8 @@ class CreateSpectraTask(luigi.Task):
             for wavelength in WAVELENGHTS:
                 simulation_path = os.path.split(sim_wrapper.mcml_executable)[0]
                 base_mco_filename = \
-                    str(self.df_prefix) + "_Sim_" + str(i) + "_Bat_" + str(self.batch_nr) + "_"
+                    str(self.df_prefix) + "_Sim_" + str(i) + \
+                    "_Bat_" + str(self.batch_nr) + "_"
                 mco_filename = base_mco_filename + str(wavelength) + '.mco'
                 df["reflectances",wavelength][i] = \
                     get_diffuse_reflectance(os.path.join(simulation_path,mco_filename))
@@ -127,7 +131,7 @@ class CreateSpectraTask(luigi.Task):
 if __name__ == '__main__':
 
     # create a folder for the results if necessary
-    sc.set_root(ROOT_PATH)
+    sc.set_root(OUTPUT_ROOT_PATH)
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
@@ -148,17 +152,17 @@ if __name__ == '__main__':
         colon_test_task = CreateSpectraTask("ipcai_mean_scattering_test",
                                        i,
                                        NR_ELEMENTS_IN_BATCH,
-                                       mcfac.VisualizationMcFactory())
+                                       mcfac.ColonMuscleMeanScatteringFactory())
         colon_train_task = CreateSpectraTask("ipcai_mean_scattering_train",
                                        i,
                                        NR_ELEMENTS_IN_BATCH,
                                        mcfac.ColonMuscleMeanScatteringFactory())
-        generic_task = CreateSpectraTask("ipcai_generic_mean_scattering_test",
-                                       i,
-                                       NR_ELEMENTS_IN_BATCH,
-                                       mcfac.GenericMeanScatteringFactory())
+        # generic_task = CreateSpectraTask("ipcai_generic_mean_scattering_test",
+        #                                i,
+        #                                NR_ELEMENTS_IN_BATCH,
+        #                                mcfac.GenericMeanScatteringFactory())
         w.add(colon_train_task)
         w.add(colon_test_task)
-        w.add(generic_task)
+        #w.add(generic_task)
         w.run()
 
