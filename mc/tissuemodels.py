@@ -1,4 +1,3 @@
-
 """
 
 ipcai2016
@@ -18,6 +17,9 @@ See LICENSE for details
 Created on Sep 9, 2015
 
 @author: wirkert
+
+Modified on August 8, 2016: Anant Vemuri
+
 '''
 
 import numpy as np
@@ -37,26 +39,32 @@ class AbstractTissue(object):
     def set_mci_filename(self, mci_filename):
         self._mci_wrapper.set_mci_filename(mci_filename)
 
-    def set_mco_filename(self, mco_filename):
-        self._mci_wrapper.set_mco_filename(mco_filename)
+    def set_base_mco_filename(self, base_filename):
+        self._mci_wrapper.set_base_mco_filename(base_filename)
 
     def get_mco_filename(self):
-        return self._mci_wrapper.mco_filename
+        return self._mci_wrapper.get_base_mco_filename()
 
     def set_wavelength(self, wavelength):
         self.wavelength = wavelength
 
     def create_mci_file(self):
-        # set layers
-        for i, ua in enumerate(self.uas):
-            self._mci_wrapper.set_layer(i,  # layer nr
-                                        self.ns[i],  # refraction index
-                                        self.uas[i](self.wavelength),  # ua
-                                        self.usgs[i](self.wavelength)[0],  # us
-                                        self.usgs[i](self.wavelength)[1],  # g
-                                        self.ds[i])  # d
-        # now that the layers have been updated: create file
         self._mci_wrapper.create_mci_file()
+
+    def update_mci_file(self, wavelengths):
+        # set layers
+
+        for wavelength in wavelengths:
+            for i, ua in enumerate(self.uas):
+                self._mci_wrapper.set_layer(i,  # layer nr
+                                            self.ns[i],  # refraction index
+                                            self.uas[i](wavelength),  # ua
+                                            self.usgs[i](wavelength)[0],  # us
+                                            self.usgs[i](wavelength)[1],  # g
+                                            self.ds[i])  # d
+            # now that the layers have been updated: create file
+            self._mci_wrapper.update_mci_file(wavelength)
+            create_header = False
 
     def __str__(self):
         """ Overwrite this method!
@@ -83,7 +91,7 @@ class GenericTissue(AbstractTissue):
     Initializes a 3-layer generic tissue model
     '''
 
-    def set_dataframe_row(self, df_row):
+    def set_tissue_instance(self, df_row):
         """take one example (one row) of a created batch and set the tissue to
         resemble the structure specified by this row
 

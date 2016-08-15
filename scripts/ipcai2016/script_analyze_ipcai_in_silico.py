@@ -39,6 +39,13 @@ from sklearn.ensemble.forest import RandomForestRegressor
 import tasks_mc
 import commons
 
+INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/"
+train = "ipcai_revision_colon_mean_scattering_train"
+test = "ipcai_revision_colon_mean_scattering_test"
+
+
+##########################################################
+
 sc = commons.ScriptCommons()
 
 sc.add_dir("IN_SILICO_RESULTS_PATH", os.path.join(sc.get_dir("RESULTS_FOLDER"),
@@ -319,7 +326,7 @@ def standard_plotting(df, color_palette=None, xytext_position=None):
 
 if __name__ == '__main__':
 
-    sc.set_root("/media/wirkert/data/Data/2016_02_02_IPCAI/")
+    sc.set_root(INPUT_ROOT_PATH)
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
@@ -333,8 +340,7 @@ if __name__ == '__main__':
     logger.addHandler(ch)
     luigi.interface.setup_interface_logging()
 
-    train = "ipcai_colon_mean_scattering_train"
-    test = "ipcai_colon_mean_scattering_test"
+
 
     sch = luigi.scheduler.CentralPlannerScheduler()
     w = luigi.worker.Worker(scheduler=sch)

@@ -1,7 +1,7 @@
 1.0 # file version
 1 # number of runs
 
-temp.mco A # output filename, ASCII/Binary
+temp_5e-07.mco A # output filename, ASCII/Binary
 1000000 # No. of photons
 0.002 2 # dz, dr
 500 1 1 # No. of dz, dr & da.
@@ -12,3 +12,4 @@ temp.mco A # output filename, ASCII/Binary
 1.380 1.78741 20.00000 0.000 0.050
 1.380 1.78741 20.00000 0.000 0.050
 1.0 # n for medium below.
+

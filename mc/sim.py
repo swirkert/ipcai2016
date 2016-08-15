@@ -23,6 +23,8 @@ gpumcml:
 https://code.google.com/p/gpumcml/
 
 @author: wirkert
+
+Modified on August 8, 2016: Anant Vemuri
 '''
 
 import os
@@ -50,13 +52,11 @@ class MciWrapper(object):
     def set_mci_filename(self, mci_filename):
         self.mci_filename = mci_filename
 
-    def set_mco_filename(self, mco_filename):
-        """path of the mco file.
-        This can be either a path relative to the mcml executable
-        or an absolute path.
-        BUG: it seems that it can only be relative file name
-        """
-        self.mco_filename = mco_filename
+    def set_base_mco_filename(self, base_filename):
+        self.base_mco_filename = base_filename
+
+    def get_base_mco_filename(self):
+        return self.base_mco_filename
 
     def set_nr_photons(self, nr_photons):
         self.nr_photons = nr_photons
@@ -111,14 +111,21 @@ class MciWrapper(object):
         self.n_below = n_below
 
     def create_mci_file(self):
-        """this method creates the mci file at the location self.mci_filename"""
-        open(self.mci_filename, 'a').close()
+        # write header
         f = open(self.mci_filename, 'w')
-        # write general information
         f.write(str(self.file_version) + " # file version\n")
         f.write(str(self.nr_runs) + " # number of runs\n\n")
+        f.close()
+
+    def update_mci_file(self, wavelength):
+        """this method creates the mci file at the location self.mci_filename"""
+        open(self.mci_filename, 'a').close()
+        f = open(self.mci_filename, 'a')
+
+        # Generate a new mco fileName
+        local_mco_filename = self.base_mco_filename + str(wavelength) + '.mco'
         # write the data for run
-        f.write(self.mco_filename + " A # output filename, ASCII/Binary\n")
+        f.write(local_mco_filename + " A # output filename, ASCII/Binary\n")
         f.write(str(self.nr_photons) + " # No. of photons\n")
         f.write(repr(self.dz) + " " + repr(self.dr) + " # dz, dr\n")
         f.write(repr(self.nr_dz) + " " +
@@ -136,7 +143,8 @@ class MciWrapper(object):
                     "%.5f" % (layer[2] / 100.) + " " +  # us
                     "%.3f" % layer[3] + " " +  # g
                     "%.3f" % (layer[4] * 100.) + "\n")  # d
-        f.write(repr(self.n_below) + " # n for medium below.\n")
+        f.write(repr(self.n_below) + " # n for medium below.\n\n")
+
         f.close()
         if not os.path.isfile(self.mci_filename):
             raise IOError("input file for monte carlo simulation not " +
@@ -179,12 +187,11 @@ class SimWrapper(object):
         # switch to folder where mcml resides in and execute it.
         with cd(mcml_path):
             try:
-                popen = subprocess32.Popen(args, stdout=subprocess32.PIPE)
-                popen.wait(timeout=100)
+                mcml_exec = subprocess32.Popen(args)
+                mcml_exec.wait(timeout=None)
             except:
                 logging.error("couldn't run simulation")
                 # popen.kill()
-
     def __init__(self):
         pass
 
