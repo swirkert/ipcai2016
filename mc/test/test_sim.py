@@ -26,20 +26,28 @@ import os
 from mc.sim import MciWrapper, SimWrapper, \
                    get_total_reflectance, get_diffuse_reflectance
 
-
-path_to_gpumcml = "/media/avemuri/DEV/MCML/fast-gpumcml/gpumcml.sm_20"
+# path to the externaly installed mcml simulation. This is machine
+# dependent. Thus tests depending on the execution of mcml will only
+# be performed if this file exists.
+# Should the file be located somewhere else on your computer,
+# change this path to your actual location.
+path_to_gpumcml = "/home/wirkert/workspace/monteCarlo/gpumcml/" + \
+                                        "fast-gpumcml/gpumcml.sm_20"
 skip_gpu_tests = not os.path.exists(path_to_gpumcml)
+
+this_dir, this_filename = os.path.split(__file__)
+DATA_PATH = os.path.join(this_dir, "..", "data")
 
 
 class Test(unittest.TestCase):
 
     def setUp(self):
         self.mci_filename = "temp.mci"
-        self.mco_filename = "temp.mco"
+        self.base_mco_filename = "temp"
         # create a mci_wrapper which shall create a mci file
         self.mci_wrapper = MciWrapper()
         self.mci_wrapper.set_mci_filename(self.mci_filename)
-        self.mci_wrapper.set_mco_filename(self.mco_filename)
+        self.mci_wrapper.set_base_mco_filename(self.base_mco_filename)
         self.mci_wrapper.set_nr_photons(10 ** 6)
         self.mci_wrapper.add_layer(1.0, 2.1, 3.2, 4.3, 5.4)
         self.mci_wrapper.add_layer(6.5, 7.8, 8.9, 9.10, 10.11)
@@ -47,22 +55,21 @@ class Test(unittest.TestCase):
                                103.1000001, 104.10000001)
         self.mci_wrapper.set_layer(1, 1, 1, 1, 1, 1)
         # expected mci file
-        self.correct_mci_filename = "./mc/data/correct.mci"
-        # path to the externaly installed mcml simulation. This is machine
-        # dependent. Thus tests depending on the execution of mcml will only
-        # be performed if this file exists.
-        # Should the file be located somewhere else on your computer,
-        # change this path to your actual location.
+        self.correct_mci_filename = os.path.join(DATA_PATH, "correct.mci")
+        # the name of the expected mco file
+        mcml_path, mcml_file = os.path.split(path_to_gpumcml)
+        self.full_mco_path = os.path.join(mcml_path,
+                                          self.base_mco_filename + ".mco")
 
     def tearDown(self):
         os.remove(self.mci_filename)
-        mcml_path, mcml_file = os.path.split(path_to_gpumcml)
-        created_mco_file = mcml_path + "/" + self.mco_filename
-        if os.path.isfile(created_mco_file):
-            os.remove(created_mco_file)
+
+        if os.path.isfile(self.full_mco_path):
+            os.remove(self.full_mco_path)
 
     def test_mci_wrapper(self):
         self.mci_wrapper.create_mci_file()
+        self.mci_wrapper.update_mci_file("")
         self.assertTrue(os.path.isfile(self.mci_filename),
                         "mci file was created")
         self.assertTrue(filecmp.cmp(self.mci_filename,
@@ -75,12 +82,14 @@ class Test(unittest.TestCase):
         mcml_path, mcml_file = os.path.split(path_to_gpumcml)
         if os.path.isfile(path_to_gpumcml):
             self.mci_wrapper.create_mci_file()
+            self.mci_wrapper.update_mci_file("")
             sim_wrapper = SimWrapper()
             sim_wrapper.set_mci_filename(self.mci_filename)
             sim_wrapper.set_mcml_executable(path_to_gpumcml)
             sim_wrapper.run_simulation()
             self.assertTrue(os.path.isfile(os.path.join(mcml_path,
-                                                        self.mco_filename)),
+                                                        self.base_mco_filename +
+                                                        ".mco")),
                         "mco file was created")
 
     @unittest.skipIf(skip_gpu_tests, "skip if gpumcml not installed")
@@ -92,21 +101,20 @@ class Test(unittest.TestCase):
         # create a book_p55_mci which shall create a mci file
         book_p55_mci = MciWrapper()
         book_p55_mci.set_mci_filename(self.mci_filename)
-        book_p55_mci.set_mco_filename(self.mco_filename)
-        book_p55_mci.set_nr_photons(10**6)
+        book_p55_mci.set_base_mco_filename(self.base_mco_filename)
+        book_p55_mci.set_nr_photons(10**8)
         book_p55_mci.add_layer(1, 1000, 9000, 0.75, 0.0002)
 
-        mcml_path, mcml_file = os.path.split(path_to_gpumcml)
         if os.path.isfile(path_to_gpumcml):
             book_p55_mci.create_mci_file()
+            book_p55_mci.update_mci_file("")
             sim_wrapper = SimWrapper()
             sim_wrapper.set_mci_filename(self.mci_filename)
             sim_wrapper.set_mcml_executable(path_to_gpumcml)
             sim_wrapper.run_simulation()
-            self.assertTrue(os.path.isfile(mcml_path + "/" + self.mco_filename),
+            self.assertTrue(os.path.isfile(self.full_mco_path),
                         "mco file was created")
-            refl = get_diffuse_reflectance(os.path.join(mcml_path,
-                                                        self.mco_filename))
+            refl = get_diffuse_reflectance(self.full_mco_path)
             self.assertAlmostEqual(refl, 0.09734, 3,
                                    "correct reflectance determined " +
                                    "according to book table 3.1")
@@ -120,21 +128,20 @@ class Test(unittest.TestCase):
         # create a book_p56_mci which shall create a mci file
         book_p56_mci = MciWrapper()
         book_p56_mci.set_mci_filename(self.mci_filename)
-        book_p56_mci.set_mco_filename(self.mco_filename)
-        book_p56_mci.set_nr_photons(10**6)
+        book_p56_mci.set_base_mco_filename(self.base_mco_filename)
+        book_p56_mci.set_nr_photons(10**8)
         book_p56_mci.add_layer(1.5, 1000, 9000, 0., 1)
 
-        mcml_path, mcml_file = os.path.split(path_to_gpumcml)
         if os.path.isfile(path_to_gpumcml):
             book_p56_mci.create_mci_file()
+            book_p56_mci.update_mci_file("")
             sim_wrapper = SimWrapper()
             sim_wrapper.set_mci_filename(self.mci_filename)
             sim_wrapper.set_mcml_executable(path_to_gpumcml)
             sim_wrapper.run_simulation()
-            self.assertTrue(os.path.isfile(mcml_path + "/" + self.mco_filename),
+            self.assertTrue(os.path.isfile(self.full_mco_path),
                         "mco file was created")
-            refl = get_total_reflectance(os.path.join(mcml_path,
-                                                      self.mco_filename))
+            refl = get_total_reflectance(self.full_mco_path)
             self.assertAlmostEqual(refl, 0.26, delta=0.01,
                                    msg="correct reflectance determined " +
                                    "according to book table 3.2")

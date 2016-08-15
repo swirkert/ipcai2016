@@ -34,9 +34,7 @@ class TestTissueModels(unittest.TestCase):
 
     def setUp(self):
         self.mci_filename = "temp.mci"
-        self.mco_filename = "temp.mco"
-        # in this file we stored the expected result created from the
-        # "old" implementation of our algorithm:
+        self.mco_filename_prefix = "temp_"
         self.correct_mci_filename = os.path.join(DATA_PATH, "colon_default.mci")
 
     def tearDown(self):
@@ -46,11 +44,12 @@ class TestTissueModels(unittest.TestCase):
         # create nice colon model
         tissue = GenericTissue(nr_layers=2)
         tissue.set_mci_filename(self.mci_filename)
-        tissue.set_mco_filename(self.mco_filename)
-        tissue.wavelength = 500. * 10 ** -9
+        tissue.set_base_mco_filename(self.mco_filename_prefix)
+        wavelengths = [500. * 10 ** -9]
         # just use the default parameters for this test
         # now create the simulation file
         tissue.create_mci_file()
+        tissue.update_mci_file(wavelengths)
         # and assert its correct
         self.assertTrue(os.path.isfile(self.mci_filename),
                         "mci file was created")

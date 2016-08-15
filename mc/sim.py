@@ -27,11 +27,9 @@ https://code.google.com/p/gpumcml/
 Modified on August 8, 2016: Anant Vemuri
 '''
 
-import fcntl, os
+import os
 import contextlib
 import logging
-import time
-import numpy as np
 
 import subprocess32
 
@@ -54,16 +52,11 @@ class MciWrapper(object):
     def set_mci_filename(self, mci_filename):
         self.mci_filename = mci_filename
 
-    def set_mco_filename(self, mco_filename):
-        """path of the mco file.
-        This can be either a path relative to the mcml executable
-        or an absolute path.
-        BUG: it seems that it can only be relative file name
-        """
-        self.mco_filename = mco_filename
-
     def set_base_mco_filename(self, base_filename):
         self.base_mco_filename = base_filename
+
+    def get_base_mco_filename(self):
+        return self.base_mco_filename
 
     def set_nr_photons(self, nr_photons):
         self.nr_photons = nr_photons
@@ -116,7 +109,6 @@ class MciWrapper(object):
 
     def set_n_medium_below(self, n_below):
         self.n_below = n_below
-
 
     def create_mci_file(self):
         # write header
@@ -196,23 +188,6 @@ class SimWrapper(object):
         with cd(mcml_path):
             try:
                 mcml_exec = subprocess32.Popen(args)
-                # Fix the pipes to be nonblocking
-                # fcntl.fcntl(mcml_exec.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-                # fcntl.fcntl(mcml_exec.stderr.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-                #mcml_exec.stdin.write('\n\nsome_command_to_the_subprocess\n\n')
-                # mcml_exec.stdin.write('\n\n\nsome_command_to_the_subprocess\n\n\n')
-                # while True:
-                #     # Main loop
-                #     stdout = ''
-                #     stderr = ''
-                #
-                #     # Read from stdout
-                #     try:
-                #         stdout = mcml_exec.stdout.read()
-                #     except Exception:
-                #         pass
-
-
                 mcml_exec.wait(timeout=None)
             except:
                 logging.error("couldn't run simulation")
