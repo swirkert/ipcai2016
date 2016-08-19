@@ -32,6 +32,8 @@ import mc.factories as mcfac
 import numpy as np
 from mc.sim import SimWrapper, get_diffuse_reflectance
 
+from mc.mcmlpath import get_mcml_exec
+
 import commons
 
 
@@ -44,7 +46,8 @@ NR_PHOTONS = 10 ** 6
 
 # experiment configuration
 # this path definitly needs to be adapted by you
-PATH_TO_MCML = "/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
+PATH_TO_MCML = os.path.join(get_mcml_exec(),'gpumcml.sm_20')
+#"/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
 EXEC_MCML = "gpumcml.sm_20"
 OUTPUT_ROOT_PATH = "/media/wirkert/data/Data/temp"
 
