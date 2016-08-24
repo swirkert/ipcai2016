@@ -20,17 +20,19 @@ Created on Sep 10, 2015
 @author: wirkert
 '''
 
+
+
 import os
 
-import luigi
-import mc.dfmanipulations as dfmani
-import numpy as np
 import pandas as pd
-from msi.io.spectrometerreader import SpectrometerReader
+import numpy as np
+import luigi
 from scipy.interpolate import interp1d
 from sklearn.preprocessing import normalize
 
 import commons
+import mc.dfmanipulations as dfmani
+from msi.io.spectrometerreader import SpectrometerReader
 
 sc = commons.ScriptCommons()
 
@@ -58,13 +60,13 @@ class FilterTransmission(luigi.Task):
         # filter high and low _wavelengths
         wavelengths = filter_transmission.get_wavelengths()
         fi_image = filter_transmission.get_image()
-        fi_image[wavelengths < 450 * 10 ** -9] = 0.0
-        fi_image[wavelengths > 720 * 10 ** -9] = 0.0
+        #fi_image[wavelengths < 450 * 10 ** -9] = 0.0
+        #fi_image[wavelengths > 720 * 10 ** -9] = 0.0
         # filter elements farther away than +- 30nm
         file_name = os.path.split(self.input_file)[1]
         name_to_float = float(os.path.splitext(file_name)[0])
-        fi_image[wavelengths < (name_to_float - 30) * 10 ** -9] = 0.0
-        fi_image[wavelengths > (name_to_float + 30) * 10 ** -9] = 0.0
+        #fi_image[wavelengths < (name_to_float - 30) * 10 ** -9] = 0.0
+        #fi_image[wavelengths > (name_to_float + 30) * 10 ** -9] = 0.0
         # elements < 0 are set to 0.
         fi_image[fi_image < 0.0] = 0.0
 
@@ -81,7 +83,7 @@ class JoinBatches(luigi.Task):
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + self.df_prefix + "_" +
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
                                               "all" + ".txt"))
 
     def run(self):
@@ -110,14 +112,41 @@ class CameraBatch(luigi.Task):
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + self.df_prefix +
+                                              self.expt_prefix + "_" + self.df_prefix +
                                               "_all_virtual_camera.txt"))
 
     def run(self):
         # load dataframe
         df = pd.read_csv(self.input().path, header=[0, 1])
         # camera batch creation:
-        dfmani.fold_by_sliding_average(df, 6)
+        dfmani.fold_by_fwhm(df, 10*10**-9)
+        dfmani.interpolate_wavelengths(df, sc.other["RECORDED_WAVELENGTHS"])
+        # write it
+        df.to_csv(self.output().path, index=False)
+
+
+class SpectrometerBatch(luigi.Task):
+    """takes a batch of reference data and converts it to the spectra
+    processed by a camera with the specified wavelengths assuming a 10nm FWHM"""
+    df_prefix = luigi.Parameter()
+    boxcar_smoothing = luigi.IntParameter() # how big is the boxcar to smooth
+    # (in 2nm). So 8nm boxcars would be 4
+    expt_prefix = luigi.Parameter()
+
+    def requires(self):
+        return JoinBatches(self.df_prefix)
+
+    def output(self):
+        return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
+                                              str(self.boxcar_smoothing) + "boxcar"
+                                              "_all_spectrometer.txt"))
+
+    def run(self):
+        # load dataframe
+        df = pd.read_csv(self.input().path, header=[0, 1])
+        # camera batch creation:
+        dfmani.fold_by_sliding_average(df, self.boxcar_smoothing)
         dfmani.interpolate_wavelengths(df, sc.other["RECORDED_WAVELENGTHS"])
         # write it
         df.to_csv(self.output().path, index=False)
@@ -140,11 +169,11 @@ class SpectroCamBatch(luigi.Task):
                                                                      ".txt")),
                         filenames)
 
-        return JoinBatches(self.df_prefix), filenames
+        return JoinBatches(self.df_prefix, self.expt_prefix), filenames
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.df_prefix +
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
                                               "_all_spectrocam.txt"))
 
     def run(self):

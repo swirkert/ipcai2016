@@ -17,20 +17,20 @@ See LICENSE for details
 import os
 import pickle
 
-import luigi
-import matplotlib.pylab as plt
-import msi.msimanipulations as msimani
 import numpy as np
 import pandas as pd
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from msi.io.nrrdwriter import NrrdWriter
-from msi.io.tiffringreader import TiffRingReader
-from msi.msi import Msi
-from regression.preprocessing import preprocess2
+import luigi
 from sklearn.ensemble.forest import RandomForestRegressor
+import matplotlib.pylab as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import tasks_mc
 import commons
+from msi.msi import Msi
+from msi.io.nrrdwriter import NrrdWriter
+import msi.msimanipulations as msimani
+from regression.preprocessing import preprocess2
+from msi.io.tiffringreader import TiffRingReader
 
 sc = commons.ScriptCommons()
 
@@ -56,7 +56,9 @@ def get_image_files_from_folder(folder,
     return image_files
 
 
-def plot_image(image, axis, title=None, cmap=None):
+def plot_image(image, axis=None, title=None, cmap=None):
+    if axis is None:
+        axis = plt.gca()
     if cmap is None:
         im = axis.imshow(image, interpolation='nearest', alpha=1.0)
     else:
@@ -74,33 +76,33 @@ def plot_image(image, axis, title=None, cmap=None):
 
 class IPCAITrainRegressor(luigi.Task):
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
                                               "reg_small_bowel_" +
-                                              self.df_prefix))
+                                              self.df_prefix + "_" + self.expt_prefix))
 
     def requires(self):
-        return tasks_mc.SpectroCamBatch(self.df_prefix)
+        return tasks_mc.SpectroCamBatch(self.df_prefix, self.expt_prefix)
 
     def run(self):
-        # extract data from the batch
-        df_train = pd.read_csv(self.input().path, header=[0, 1])
+        train_regressor(self.input().path, self.output())
 
-        X, y = preprocess2(df_train, snr=10.)
-        # train regressor
-        reg = RandomForestRegressor(10, min_samples_leaf=10, max_depth=9,
-                                    n_jobs=-1)
-        # reg = KNeighborsRegressor(algorithm="auto")
-        # reg = LinearRegression()
-        # reg = sklearn.svm.SVR(kernel="rbf", degree=3, C=100., gamma=10.)
-        # reg = LinearSaO2Unmixing()
-        reg.fit(X, y.values)
-        # reg = LinearSaO2Unmixing()
-        # save regressor
-        regressor_file = self.output().open('w')
-        pickle.dump(reg, regressor_file)
-        regressor_file.close()
+
+def train_regressor(data_filename, regressor_filename):
+    # extract data from the batch
+    df_train = pd.read_csv(data_filename, header=[0, 1])
+
+    X, y = preprocess2(df_train, snr=10.)
+    # train regressor
+    reg = RandomForestRegressor(10, min_samples_leaf=10, max_depth=9,
+                                n_jobs=-1)
+    reg.fit(X, y.values)
+    # save regressor
+    regressor_file = regressor_filename.open('w')
+    pickle.dump(reg, regressor_file)
+    regressor_file.close()
 
 
 class SingleMultispectralImage(luigi.Task):

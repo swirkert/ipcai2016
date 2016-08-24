@@ -77,16 +77,18 @@ def calculate_mean_spectrum(msi):
     calculating the mean spectrum """
     # reshape to collapse all but last dimension (which contains reflectances)
     collapsedImage = collapse_image(msi.get_image())
-    msi.set_image(np.mean(collapsedImage, axis=0))
+    msi.set_image(np.mean(collapsedImage.astype(float), axis=0))
     # returns the same msi.
     return msi
 
 
-def interpolate_wavelengths(msi, newWavelengths):
+def interpolate_wavelengths(msi, newWavelengths, **kwargs):
     """ interpolate image data to fit newWavelengths. Current implementation
     performs simple linear interpolation. Neither existing nor new wavelengths
-    need to be sorted. """
-    interpolator = interp1d(msi.get_wavelengths(), msi.get_image(), assume_sorted=False)
+    need to be sorted.
+    kwargs will be forwarded to interp1d """
+    interpolator = interp1d(msi.get_wavelengths(), msi.get_image(),
+                            assume_sorted=False, **kwargs)
     msi.set_image(interpolator(newWavelengths), wavelengths=newWavelengths)
     return msi
 
@@ -113,7 +115,7 @@ def dark_correction(msi, dark):
 
     The dark msi should either be of the same shape
     as msi or 1xnr_wavelengths (see tests)."""
-    msi.set_image(msi.get_image() - dark.get_image())
+    msi.set_image(msi.get_image().astype(float) - dark.get_image().astype(float))
     return msi
 
 
@@ -128,7 +130,7 @@ def flatfield_correction(msi, flatfield):
     normalize_integration_times(flatfield_copy)
     normalize_integration_times(msi)
 
-    msi.set_image(msi.get_image() / flatfield_copy.get_image())
+    msi.set_image(msi.get_image().astype(float) / flatfield_copy.get_image().astype(float))
     return msi
 
 

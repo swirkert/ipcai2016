@@ -34,17 +34,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from regression.linear import LinearSaO2Unmixing
-from regression.preprocessing import preprocess, preprocess2
 from sklearn.ensemble.forest import RandomForestRegressor
 
 import tasks_mc
+from regression.preprocessing import preprocess, preprocess2
+from regression.linear import LinearSaO2Unmixing
+
 import commons
 
-INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/Expts/Simulated/"
-train = "2016_08_15_ipcai_mean_scattering_train"
-test = "2016_08_15_ipcai_mean_scattering_test"
-EXPT_PREFIX = "NIR_OCI-U2000"
+INPUT_ROOT_PATH = "/media/wirkert/data/Data/2016_02_02_IPCAI"
+train = "ipcai_revision_colon_mean_scattering_train"
+test = "ipcai_revision_colon_mean_scattering_test"
+test_different_domain = "ipcai_revision_generic_mean_scattering"
+EXPT_PREFIX = "STANDARD_"
 
 
 ##########################################################
@@ -54,11 +56,7 @@ sc = commons.ScriptCommons()
 sc.add_dir("IN_SILICO_RESULTS_PATH", os.path.join(sc.get_dir("RESULTS_FOLDER"),
                                      "in_silico"))
 
-# Modify this path to the one taken from a configuration file.
-sc.add_dir('MC_DATA_FOLDER', '/media/avemuri/DEV/IPCAI2016-Seb/Expts/Simulated/'+
-                             'results/intermediate/mc_data/2016_08_15_colon/')
-
-sc.other["RECORDED_WAVELENGTHS"] = np.arange(600, 951, 10) * 10 ** -9
+sc.other["RECORDED_WAVELENGTHS"] = np.arange(470, 700, 10) * 10 ** -9
 
 w_standard = 10.  # for this evaluation we add 10% noise
 
@@ -73,9 +71,15 @@ rf = RandomForestRegressor(10, min_samples_leaf=10, max_depth=9, n_jobs=-1)
 EvaluationStruct = namedtuple("EvaluationStruct",
                               "name regressor")
 # standard evaluation setup
-standard_evaluation_setups = [#EvaluationStruct("Linear Beer-Lambert",
-                              #                 LinearSaO2Unmixing())
-                               EvaluationStruct("Proposed", rf)]
+standard_evaluation_setups = [EvaluationStruct("Linear Beer-Lambert",
+                                               LinearSaO2Unmixing(wavelengths=sc.other["RECORDED_WAVELENGTHS"],
+                                                                  fwhm=10*10**-9))
+                              , EvaluationStruct("Proposed", rf)]
+
+# an alternative if you want to compare non-linear to linear regression methods
+# standard_evaluation_setups = [EvaluationStruct("Linear Regression",
+#                                                LinearRegression())
+#                               , EvaluationStruct("Proposed", rf)]
 
 # color palette
 my_colors = ["red", "green"]
@@ -112,7 +116,7 @@ class TrainingSamplePlot(luigi.Task):
         # create a new dataframe which will hold all the generated errors
         df = pd.DataFrame()
 
-        nr_training_samples = np.arange(10, 15010, 50).astype(int)
+        nr_training_samples = np.arange(10, df_train.shape[0], 50).astype(int)
         # not very pythonic, don't care
         for n in nr_training_samples:
             X_test, y_test = preprocess(df_test, snr=w_standard)
@@ -291,7 +295,7 @@ def evaluate_data(df_train, w_train, df_test, w_test,
             errors = np.abs(y_pred - y_test)
             errors = errors.reshape(len(errors), 1)
             current_df = DataFrame(errors * 100,
-                                   columns=["Errors"])
+                                   columns=["absolute error [%]"])
             current_df["Method"] = e.name
             current_df["SNR"] = int(one_w_test)
             df = pd.concat([df, current_df], ignore_index=True)
@@ -360,7 +364,7 @@ if __name__ == '__main__':
     w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50., expt_prefix=EXPT_PREFIX))
     w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200., expt_prefix=EXPT_PREFIX))
     # Set a different testing domain to evaluate domain sensitivity
-    #w.add(NoisePlot(which_train=train,
-    #                which_test="ipcai_generic_mean_scattering_test"))
+    w.add(NoisePlot(which_train=train,
+                   which_test=test_different_domain, expt_prefix=EXPT_PREFIX))
     w.add(VhbPlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
     w.run()

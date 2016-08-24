@@ -104,13 +104,14 @@ class GenericTissue(AbstractTissue):
                            df_row[l, "sao2"],
                            df_row[l, "a_mie"],
                            df_row[l, "b_mie"],
+                           df_row[l, "a_ray"],
                            df_row[l, "d"],
                            df_row[l, "n"],
                            df_row[l, "g"])
 
     def set_layer(self, layer_nr=0,
-                  bvf=None, saO2=None, a_mie=None, b_mie=None, d=None,
-                  n=None, g=None):
+                  bvf=None, saO2=None, a_mie=None, b_mie=None, a_ray=None,
+                  d=None, n=None, g=None):
         """Helper function to set one layer."""
         if bvf is None:
             bvf = 0.02
@@ -118,6 +119,8 @@ class GenericTissue(AbstractTissue):
             saO2 = 0.7
         if a_mie is None:
             a_mie = 10. * 100
+        if a_ray is None:
+            a_ray = 0.
         if d is None:
             d = 500. * 10 ** -6
         if b_mie is None:
@@ -131,7 +134,7 @@ class GenericTissue(AbstractTissue):
         self.uas[layer_nr].saO2 = saO2
         # and one for scattering coefficient
         self.usgs[layer_nr].a_mie = a_mie
-        self.usgs[layer_nr].a_ray = 0.
+        self.usgs[layer_nr].a_ray = a_ray
         self.usgs[layer_nr].b_mie = b_mie
         self.usgs[layer_nr].g = g
         self.ds[layer_nr] = d
@@ -162,4 +165,12 @@ class GenericTissue(AbstractTissue):
         ds = np.ones(nr_layers, dtype=float) * 500.*10 ** -6
         ns = np.ones(nr_layers, dtype=float) * 1.38
         super(GenericTissue, self).__init__(ns, uas, usgs, ds)
+
+
+class PhantomTissue(GenericTissue):
+
+    def __init__(self, nr_layers=1):
+        super(PhantomTissue, self).__init__(nr_layers=1)
+        self.usgs = [UsgIntralipid()]
+
 

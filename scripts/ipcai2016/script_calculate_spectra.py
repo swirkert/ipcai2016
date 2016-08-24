@@ -190,10 +190,4 @@ def main(args):
 
 if __name__ == '__main__':
 
-    args = copy.deepcopy(sys.argv)
-    if len(sys.argv) == 1:  # neither experiment nor tissue given
-        args.append("/home/wirkert/workspace/ipcai2016_new/scripts/experiment.ini")
-    if len(sys.argv) < 3:  # only experiment was given
-        args.append("/home/wirkert/workspace/ipcai2016_new/mc/data/tissues/laparoscopic_ipcai_colon_2016_08_23.ini")
-
-    main(args)
+    main(sys.argv)

@@ -21,8 +21,8 @@ Created on Fri Aug 14 11:09:18 2015
 @author: wirkert
 """
 
-import Image
-import ImageEnhance
+from PIL import Image
+from PIL import ImageEnhance
 import datetime
 import logging
 
@@ -39,6 +39,9 @@ TiffRingReader.RESIZE_FACTOR = 0.5
 
 sc = commons.ScriptCommons()
 
+EXPT_PREFIX = "STANDARD_"
+
+in_vivo_train = "ipcai_revision_colon_mean_scattering_train"
 
 sc.add_dir("SMALL_BOWEL_DATA",
            os.path.join(sc.get_dir("DATA_FOLDER"), "small_bowel_images"))
@@ -139,9 +142,10 @@ def plot_image(image, axis):
 class IPCAICreateOxyImageTask(luigi.Task):
     image_name = luigi.Parameter()
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return IPCAITrainRegressor(df_prefix=self.df_prefix), \
+        return IPCAITrainRegressor(df_prefix=self.df_prefix, expt_prefix=self.expt_prefix), \
                Flatfield(flatfield_folder=sc.get_full_dir("FLAT_FOLDER")), \
                SingleMultispectralImage(image=self.image_name), \
                Dark(dark_folder=sc.get_full_dir("DARK_FOLDER"))
@@ -281,7 +285,8 @@ if __name__ == '__main__':
 
     for f in files:
         main_task = IPCAICreateOxyImageTask(image_name=f,
-                df_prefix="ipcai_colon_mean_scattering_train")
+                df_prefix=in_vivo_train,
+                expt_prefix=EXPT_PREFIX)
         w.add(main_task)
     w.run()
 
