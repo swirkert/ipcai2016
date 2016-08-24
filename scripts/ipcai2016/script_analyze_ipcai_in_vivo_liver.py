@@ -23,8 +23,8 @@ Created on Fri Aug 14 11:09:18 2015
 
 import Image
 import ImageEnhance
-import datetime
 import logging
+import datetime
 
 import SimpleITK as sitk
 import matplotlib
@@ -33,6 +33,8 @@ from msi.io.nrrdreader import NrrdReader
 from regression.estimation import estimate_image
 
 from tasks_common import *
+import commons
+from msi.io.tiffringreader import TiffRingReader
 
 TiffRingReader.RESIZE_FACTOR = 0.5
 
@@ -296,7 +298,7 @@ if __name__ == '__main__':
 
     for f in first_invivo_image_files:
         main_task = IPCAICreateOxyImageTask(image_name=f,
-                df_prefix="ipcai_colon_mean_scattering_train")
+                df_prefix="ipcai_revision_colon_mean_scattering_train")
         w.add(main_task)
 
     w.run()

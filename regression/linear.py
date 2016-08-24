@@ -21,65 +21,35 @@ Created on Oct 19, 2015
 '''
 
 import numpy as np
-from scipy.interpolate import interp1d
 
 from mc.usuag import get_haemoglobin_extinction_coefficients
+
 
 class LinearSaO2Unmixing(object):
     '''
     classdocs
     '''
 
-    def __init__(self):
+    def __init__(self, wavelengths, fwhm):
         # oxygenated haemoglobin extinction coefficients
-        eHb02 = 0
-        eHb = 0
+        eHbO2_map , eHb_map = \
+            get_haemoglobin_extinction_coefficients()
 
-        # oxygenated haemoglobin extinction coefficients
-        eHbO2 = np.array([34772.8,
-                          27840.93333,
-                          23748.8    ,
-                          21550.8    ,
-                          21723.46667,
-                          28064.8    ,
-                          39131.73333,
-                          45402.93333,
-                          42955.06667,
-                          40041.73333,
-                          42404.4    ,
-                          36333.6    ,
-                          22568.26667,
-                          6368.933333,
-                          1882.666667,
-                          1019.333333,
-                          664.6666667,
-                          473.3333333,
-                          376.5333333,
-                          327.2      ,
-                          297.0666667],)
-        # deoxygenated haemoglobin extinction coefficients
-        eHb = [18031.73333 ,
-               15796.8     ,
-               17365.33333 ,
-               21106.53333 ,
-               26075.06667 ,
-               32133.2     ,
-               39072.66667 ,
-               46346.8     ,
-               51264       ,
-               50757.33333 ,
-               45293.33333 ,
-               36805.46667 ,
-               26673.86667 ,
-               17481.73333 ,
-               10210.13333 ,
-               7034        ,
-               5334.533333 ,
-               4414.706667 ,
-               3773.96     ,
-               3257.266667 ,
-               2809.866667]
-        nr_total_wavelengths = len(eHb)
+        eHbO2 = []
+        eHb = []
+        for w in wavelengths:
+            # adapt absorption spectra to waveband specified by fwhm
+            waveband = np.linspace(w - fwhm/2., w + fwhm/2., 100)
+            eHbO2_w = np.sum(eHbO2_map(waveband)) / len(waveband)
+            eHb_w = np.sum(eHb_map(waveband)) / len(waveband)
+            # add it to our list
+            eHbO2.append(eHbO2_w)
+            eHb.append(eHb_w)
+
+        eHbO2 = np.array(eHbO2)
+        eHb = np.array(eHb)
+
+        nr_total_wavelengths = len(wavelengths)
         # to account for scattering losses we allow a constant offset
         scattering = np.ones(nr_total_wavelengths)
         # put eHbO2, eHb and scattering term in one measurement matrix
@@ -87,7 +57,6 @@ class LinearSaO2Unmixing(object):
         self.lsq_solution_matrix = np.dot(np.linalg.inv(np.dot(self.H.T,
                                                                self.H)),
                                           self.H.T)
-
 
     def fit(self, X, y, weights=None):
         """only implemented to fit to the standard sklearn framework."""
@@ -107,5 +76,7 @@ class LinearSaO2Unmixing(object):
         oxy_test, deoxy, s = np.dot(self.lsq_solution_matrix, X.T)
         # calculate oxygenation = oxygenated blood / total blood
         saO2 = oxy_test / (oxy_test + deoxy)
+
+        self.last_solution = oxy_test, deoxy, s
 
         return np.clip(saO2, 0., 1.)

@@ -27,8 +27,12 @@ import numpy as np
 class Msi():
     """ a multi spectral image stack consisting of:
 
-    image:      a rows x columns x nrWavelengths dimensional array
-    properties: additional, application dependent properties
+    image:      a rows x columns x nrWavelengths dimensional numpy array
+    properties: additional, application dependent properties (dictionary)
+
+    If no perperties are given, but an image is passed the mandatory "wavelenghts"
+    property will be added automatically, wavelengths will be set to
+    0,1,..nrWavelengths
     """
 
     def __init__(self, image=None, properties=None):

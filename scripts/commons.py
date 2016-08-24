@@ -68,6 +68,15 @@ class ScriptCommons(object):
             for f in self.dirs:
                 create_folder_if_necessary(self.get_full_dir(f))
 
+        def create_results_folders(self):
+            """
+            Create folders containing "result" listed in self.folders if not existing
+            """
+            for f in self.dirs:
+                path = self.get_full_dir(f)
+                if "result" in path:
+                    create_folder_if_necessary(path)
+
         def set_root(self, root):
             self.root = root
 
@@ -111,3 +120,4 @@ def create_folder_if_necessary(folder):
     """
     if not os.path.exists(folder):
         os.makedirs(folder)
+
