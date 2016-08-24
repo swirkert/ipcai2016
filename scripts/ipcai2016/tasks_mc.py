@@ -79,10 +79,11 @@ class FilterTransmission(luigi.Task):
 
 class JoinBatches(luigi.Task):
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + self.df_prefix + "_" +
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
                                               "all" + ".txt"))
 
     def run(self):
@@ -104,13 +105,14 @@ class CameraBatch(luigi.Task):
     """takes a batch of reference data and converts it to the spectra
     processed by a camera with the specified wavelengths assuming a 10nm FWHM"""
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
         return JoinBatches(self.df_prefix, self.expt_prefix)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + self.df_prefix +
+                                              self.expt_prefix + "_" + self.df_prefix +
                                               "_all_virtual_camera.txt"))
 
     def run(self):
@@ -136,7 +138,7 @@ class SpectrometerBatch(luigi.Task):
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + self.df_prefix + "_" +
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
                                               str(self.boxcar_smoothing) + "boxcar"
                                               "_all_spectrometer.txt"))
 
@@ -167,11 +169,11 @@ class SpectroCamBatch(luigi.Task):
                                                                      ".txt")),
                         filenames)
 
-        return JoinBatches(self.df_prefix), filenames
+        return JoinBatches(self.df_prefix, self.expt_prefix), filenames
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.df_prefix +
+                                              self.expt_prefix + "_" + self.df_prefix + "_" +
                                               "_all_spectrocam.txt"))
 
     def run(self):

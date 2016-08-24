@@ -34,8 +34,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from regression.linear import LinearSaO2Unmixing
-from regression.preprocessing import preprocess, preprocess2
 from sklearn.ensemble.forest import RandomForestRegressor
 
 import tasks_mc
@@ -44,10 +42,11 @@ from regression.linear import LinearSaO2Unmixing
 
 import commons
 
-INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/Expts/Simulated/"
-train = "2016_08_15_ipcai_mean_scattering_train"
-test = "2016_08_15_ipcai_mean_scattering_test"
-EXPT_PREFIX = "NIR_OCI-U2000"
+INPUT_ROOT_PATH = "/media/wirkert/data/Data/2016_02_02_IPCAI"
+train = "ipcai_revision_colon_mean_scattering_train"
+test = "ipcai_revision_colon_mean_scattering_test"
+test_different_domain = "ipcai_revision_generic_mean_scattering"
+EXPT_PREFIX = "STANDARD_"
 
 
 ##########################################################
@@ -365,7 +364,7 @@ if __name__ == '__main__':
     w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50., expt_prefix=EXPT_PREFIX))
     w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200., expt_prefix=EXPT_PREFIX))
     # Set a different testing domain to evaluate domain sensitivity
-    #w.add(NoisePlot(which_train=train,
-    #                which_test="ipcai_generic_mean_scattering_test"))
+    w.add(NoisePlot(which_train=train,
+                   which_test=test_different_domain, expt_prefix=EXPT_PREFIX))
     w.add(VhbPlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
     w.run()

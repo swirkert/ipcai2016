@@ -21,8 +21,8 @@ Created on Fri Aug 14 11:09:18 2015
 @author: wirkert
 """
 
-import Image
-import ImageEnhance
+from PIL import Image
+from PIL import ImageEnhance
 import logging
 import datetime
 
@@ -39,6 +39,11 @@ from msi.io.tiffringreader import TiffRingReader
 TiffRingReader.RESIZE_FACTOR = 0.5
 
 sc = commons.ScriptCommons()
+
+
+EXPT_PREFIX = "STANDARD_"
+
+in_vivo_train = "ipcai_revision_colon_mean_scattering_train"
 
 sc.add_dir("LIVER_DATA",
            os.path.join(sc.get_dir("DATA_FOLDER"), "liver_images"))
@@ -136,9 +141,10 @@ class OxyAndVhbOverTimeTask(luigi.Task):
 class IPCAICreateOxyImageTask(luigi.Task):
     image_name = luigi.Parameter()
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return IPCAITrainRegressor(df_prefix=self.df_prefix), \
+        return IPCAITrainRegressor(df_prefix=self.df_prefix, expt_prefix=self.expt_prefix), \
                Flatfield(flatfield_folder=sc.get_full_dir("FLAT_FOLDER")), \
                SingleMultispectralImage(image=os.path.join(
                        sc.get_full_dir("LIVER_DATA"), self.image_name)), \
@@ -298,7 +304,8 @@ if __name__ == '__main__':
 
     for f in first_invivo_image_files:
         main_task = IPCAICreateOxyImageTask(image_name=f,
-                df_prefix="ipcai_revision_colon_mean_scattering_train")
+                df_prefix=in_vivo_train,
+                expt_prefix=EXPT_PREFIX)
         w.add(main_task)
 
     w.run()

@@ -76,14 +76,15 @@ def plot_image(image, axis=None, title=None, cmap=None):
 
 class IPCAITrainRegressor(luigi.Task):
     df_prefix = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
                                               "reg_small_bowel_" +
-                                              self.df_prefix))
+                                              self.df_prefix + "_" + self.expt_prefix))
 
     def requires(self):
-        return tasks_mc.SpectroCamBatch(self.df_prefix)
+        return tasks_mc.SpectroCamBatch(self.df_prefix, self.expt_prefix)
 
     def run(self):
         train_regressor(self.input().path, self.output())
