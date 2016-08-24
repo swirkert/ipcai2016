@@ -20,19 +20,29 @@ Created on Oct 19, 2015
 @author: wirkert
 '''
 import unittest
+import os
 
 import numpy as np
 from pandas.util.testing import assert_frame_equal
 
-from mc.batches import ColonMuscleBatch
 import mc.dfmanipulations as dfmani
+from mc.batches import IniBatch
+from mc import tissueparser
+
+
+this_dir, this_filename = os.path.split(__file__)
+DATA_PATH = os.path.join(this_dir, "..", "data", "tissues")
+
 
 class Test(unittest.TestCase):
 
     def setUp(self):
         # create a colon batch with 2 samples
-        self.test_batch = ColonMuscleBatch()
-        self.test_batch.create_parameters(2)
+
+        tissue_instance = tissueparser.read_tissue_config(
+            os.path.join(DATA_PATH, 'tissue_config_test.ini'))
+        self.test_batch = IniBatch(tissue_instance)
+        self.df = self.test_batch.create_tissue_samples(2)
 
         # artificially add 10 fake "reflectances" to this batch
         # at 10 fake "wavelengths"
@@ -40,13 +50,10 @@ class Test(unittest.TestCase):
         reflectance1 = np.arange(0, 30, 3)
         reflectance2 = np.arange(30, 60, 3)
         for w in WAVELENGHTS:
-            self.test_batch.df["reflectances", w] = np.NAN
+            self.df["reflectances", w] = np.NAN
         for r1, r2, w in zip(reflectance1, reflectance2, WAVELENGHTS):
-            self.test_batch.df["reflectances", w][0] = r1
-            self.test_batch.df["reflectances", w][1] = r2
-
-        # shortcut to dataframe that we are interested in:
-        self.df = self.test_batch.df
+            self.df["reflectances", w][0] = r1
+            self.df["reflectances", w][1] = r2
 
     def test_sliding_average(self):
         # by test design folding should not alter elements (only at boundaries,

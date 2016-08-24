@@ -1,8 +1,6 @@
 
 """
 
-ipcai2016
-
 Copyright (c) German Cancer Research Center,
 Computer Assisted Interventions.
 All rights reserved.
@@ -15,9 +13,9 @@ See LICENSE for details
 
 """
 '''
-Created on Sep 9, 2015
+Created on Aug 19, 2016
 
-@author: wirkert
+@author: avemuri
 '''
 
 import unittest

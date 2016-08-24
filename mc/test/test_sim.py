@@ -19,9 +19,11 @@ Created on Sep 8, 2015
 
 @author: wirkert
 '''
-import unittest
 import filecmp
 import os
+import unittest
+
+from mc.mcmlpath import get_mcml_path
 
 from mc.sim import MciWrapper, SimWrapper, \
                    get_total_reflectance, get_diffuse_reflectance
@@ -31,8 +33,9 @@ from mc.sim import MciWrapper, SimWrapper, \
 # be performed if this file exists.
 # Should the file be located somewhere else on your computer,
 # change this path to your actual location.
-path_to_gpumcml = "/home/wirkert/workspace/monteCarlo/gpumcml/" + \
-                                        "fast-gpumcml/gpumcml.sm_20"
+path_to_gpumcml = os.path.join(get_mcml_path(), 'gpumcml.sm_20')
+#"/home/wirkert/workspace/monteCarlo/gpumcml/" + \
+#       "fast-gpumcml/gpumcml.sm_20"
 skip_gpu_tests = not os.path.exists(path_to_gpumcml)
 
 this_dir, this_filename = os.path.split(__file__)

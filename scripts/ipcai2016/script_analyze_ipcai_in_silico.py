@@ -19,6 +19,8 @@ See LICENSE for details
 Created on Fri Aug 14 11:09:18 2015
 
 @author: wirkert
+
+Modified on August 16, 2016: Anant Vemuri
 """
 
 import datetime
@@ -39,9 +41,10 @@ from sklearn.ensemble.forest import RandomForestRegressor
 import tasks_mc
 import commons
 
-INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/SimulatedData/"
-train = "ipcai_revision_colon_mean_scattering_train"
-test = "ipcai_revision_colon_mean_scattering_test"
+INPUT_ROOT_PATH = "/media/avemuri/DEV/IPCAI2016-Seb/Expts/Simulated/"
+train = "2016_08_15_ipcai_mean_scattering_train"
+test = "2016_08_15_ipcai_mean_scattering_test"
+EXPT_PREFIX = "NIR_OCI-U2000"
 
 
 ##########################################################
@@ -51,7 +54,11 @@ sc = commons.ScriptCommons()
 sc.add_dir("IN_SILICO_RESULTS_PATH", os.path.join(sc.get_dir("RESULTS_FOLDER"),
                                      "in_silico"))
 
-sc.other["RECORDED_WAVELENGTHS"] = np.arange(470, 680, 10) * 10 ** -9
+# Modify this path to the one taken from a configuration file.
+sc.add_dir('MC_DATA_FOLDER', '/media/avemuri/DEV/IPCAI2016-Seb/Expts/Simulated/'+
+                             'results/intermediate/mc_data/2016_08_15_colon/')
+
+sc.other["RECORDED_WAVELENGTHS"] = np.arange(600, 951, 10) * 10 ** -9
 
 w_standard = 10.  # for this evaluation we add 10% noise
 
@@ -66,9 +73,9 @@ rf = RandomForestRegressor(10, min_samples_leaf=10, max_depth=9, n_jobs=-1)
 EvaluationStruct = namedtuple("EvaluationStruct",
                               "name regressor")
 # standard evaluation setup
-standard_evaluation_setups = [EvaluationStruct("Linear Beer-Lambert",
-                                               LinearSaO2Unmixing())
-                              , EvaluationStruct("Proposed", rf)]
+standard_evaluation_setups = [#EvaluationStruct("Linear Beer-Lambert",
+                              #                 LinearSaO2Unmixing())
+                               EvaluationStruct("Proposed", rf)]
 
 # color palette
 my_colors = ["red", "green"]
@@ -81,17 +88,18 @@ noise_levels = np.array([1,2,3,4,5,6,7,8,9,10,
 class TrainingSamplePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train), \
-               tasks_mc.CameraBatch(self.which_test)
+        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
+               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              "sample_plot_train_" +
+                                              self.expt_prefix + "sample_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
-                                              ".pdf"))
+                                              ".png"))
 
     def run(self):
         # get data
@@ -151,17 +159,18 @@ class TrainingSamplePlot(luigi.Task):
 class VhbPlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train), \
-               tasks_mc.CameraBatch(self.which_test)
+        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
+               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              "vhb_noise_plot_train_" +
+                                              self.expt_prefix + "vhb_noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
-                                              ".pdf"))
+                                              ".png"))
 
     @staticmethod
     def preprocess_vhb(batch, nr_samples=None, snr=None,
@@ -195,17 +204,17 @@ class VhbPlot(luigi.Task):
 class NoisePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train), \
-               tasks_mc.CameraBatch(self.which_test)
-
+        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
+               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              "noise_plot_train_" +
+                                              self.expt_prefix + "noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
-                                              ".pdf"))
+                                              ".png"))
 
     def run(self):
         # get data
@@ -224,18 +233,19 @@ class WrongNoisePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
     train_snr = luigi.FloatParameter()
+    expt_prefix = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train), \
-               tasks_mc.CameraBatch(self.which_test)
+        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
+               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              str(self.train_snr) +
+                                              self.expt_prefix + str(self.train_snr) +
                                               "_wrong_noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
-                                              ".pdf"))
+                                              ".png"))
 
     def run(self):
         # get data
@@ -330,7 +340,7 @@ if __name__ == '__main__':
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
-                                              "in_silico_plots_" +
+                                              EXPT_PREFIX + "in_silico_plots_" +
                                               str(datetime.datetime.now()) +
                                               '.log'),
                         level=logging.INFO)
@@ -344,13 +354,13 @@ if __name__ == '__main__':
 
     sch = luigi.scheduler.CentralPlannerScheduler()
     w = luigi.worker.Worker(scheduler=sch)
-    w.add(TrainingSamplePlot(which_train=train, which_test=test))
-    w.add(NoisePlot(which_train=train, which_test=test))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=10.))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50.))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200.))
+    w.add(TrainingSamplePlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
+    w.add(NoisePlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=10., expt_prefix=EXPT_PREFIX))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50., expt_prefix=EXPT_PREFIX))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200., expt_prefix=EXPT_PREFIX))
     # Set a different testing domain to evaluate domain sensitivity
-    w.add(NoisePlot(which_train=train,
-                    which_test="ipcai_generic_mean_scattering_test"))
-    w.add(VhbPlot(which_train=train, which_test=test))
+    #w.add(NoisePlot(which_train=train,
+    #                which_test="ipcai_generic_mean_scattering_test"))
+    w.add(VhbPlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
     w.run()
