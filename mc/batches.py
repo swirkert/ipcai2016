@@ -111,7 +111,7 @@ class _FromPreviousLayer:
     def __init__(self, previous_samples):
         self.previous_samples = previous_samples
 
-    def __call__(self, dummy1, dummy2, dummy3):
+    def __call__(self, *args):
         return self.previous_samples
 
 

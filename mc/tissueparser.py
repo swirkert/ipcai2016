@@ -46,12 +46,12 @@ def read_tissue_config(file_name):
             # The last value is "distribution type" and stored as string.
             param_string = tissue_config.get(ilayer,iparameter)
             param_val_str = param_string.split(',')
-            for ival in range(len(param_val_str)-1):
+            for ival in range(1, len(param_val_str)):
                 tmp_layer_param.append_value(float(param_val_str[ival]))
 
             # Assuming that the last element is distribution type
-            tmp_layer_param.update_desription(param_val_str[-1])
-            tmp_layer_param.update_dist_type(param_val_str[-1])
+            tmp_layer_param.update_desription(param_val_str[0])
+            tmp_layer_param.update_dist_type(param_val_str[0])
 
             # To the temporary layer instance, add the parameter.
             tmp_layer.add_parameter(tmp_layer_param)
