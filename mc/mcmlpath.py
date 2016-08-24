@@ -19,10 +19,9 @@ Created on Aug 19, 2016
 '''
 
 
-def get_mcml_exec():
+def get_mcml_path():
 
     # Read the tissue configuration file
     # MODIFY THIS PATH FOR YOUR INSTALLATION
-    mcml_exec_path = '/home/avemuri/DEV/MCML/fast-gpumcml/'
-
+    mcml_exec_path = "/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
     return mcml_exec_path

@@ -29,14 +29,18 @@ class AbstractBatch(object):
     """summarizes a batch of simulated mc spectra"""
 
     def __init__(self):
+        pass
+
+    def _create_empty_batch(self):
         my_index = pd.MultiIndex(levels=[[], []],
                              labels=[[], []])
-        self.df = DataFrame(columns=my_index)
+        df = DataFrame(columns=my_index)
+        return df
 
-    def create_parameters(self, nr_samples):
+    def create_tissue_samples(self, nr_samples):
         """create the parameters for the batch, the simulation has
         to create the resulting reflectances"""
-        pass
+        return self._create_empty_batch()
 
     def nr_elements(self):
         return self.df.shape[0]
@@ -45,48 +49,54 @@ class AbstractBatch(object):
 class IniBatch(AbstractBatch):
     """n-layer batch configured by ini file """
 
-    def __init__(self, tissue_config):
-        super(AbstractBatch, self).__init__()
-        self.tissue_config = tissue_config
+    def __init__(self, tissue_instance=None):
+        super(IniBatch, self).__init__()
+        self.tissue_instance = tissue_instance
 
-    def create_parameters(self, nr_samples):
+    def set_tissue_instance(self, tissue_instance):
+        self.tissue_instance = tissue_instance
+
+    def create_tissue_samples(self, nr_samples):
         """Create generic n layer batch. The parameters vary randomly
         within each layer according to the tissue_config"""
 
-        for i, layer in enumerate(self.tissue_config):
+        df = self._create_empty_batch()
+
+        for i, layer in enumerate(self.tissue_instance):
 
             for param in layer.parameter_list:
-                if param.distribution is "uniform":
+                if param.distribution == "uniform":
                     gen = _uniform_tissue_distribution
-                elif param.distribution is "normal":
+                elif param.distribution == "normal":
                     gen = _normal_tissue_distribution
-                elif param.distribution is "step":
+                elif param.distribution == "step":
                     gen = _step_sample
-                elif param.distribution is "same":
+                elif param.distribution == "same":
                     previous_layer_nr = i-1
                     variable_name = param.name
                     assert(previous_layer_nr >= 0)
-                    previous_samples = self.df["layer" + str(previous_layer_nr)][variable_name]
+                    previous_samples = df["layer" + str(previous_layer_nr)][variable_name]
                     gen = _FromPreviousLayer(previous_samples)
                 else:
                     raise NotImplementedError("Unknown parameter distribution type")
 
-                samples = gen(nr_samples, *param.param_values)
-                self.df["layer" + str(i), param.name] = samples
+                samples = gen(nr_samples, *param.values)
+                df["layer" + str(i), param.name] = samples
 
-        return self.df
+        return df
 
 
 # now the wrappers to the distributions
 def _normal_tissue_distribution(nr_samples, mean, std):
-    return np.rand.nomal(loc=mean, scale=std, size=nr_samples)
+    samples = np.random.normal(loc=mean, scale=std, size=nr_samples)
+    # make sure they are > 0
+    small_number = 10**-10
+    samples = np.clip(samples, small_number, np.inf)
+    return samples
 
 
 def _uniform_tissue_distribution(nr_samples, low, high):
     samples = np.random.uniform(low, high, nr_samples)
-    # make sure they are > 0
-    small_number = 10**-10
-    samples = np.clip(samples, small_number, np.inf)
     return samples
 
 

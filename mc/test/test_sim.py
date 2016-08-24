@@ -23,7 +23,7 @@ import filecmp
 import os
 import unittest
 
-from mc.mcmlpath import get_mcml_exec
+from mc.mcmlpath import get_mcml_path
 
 from mc.sim import MciWrapper, SimWrapper, \
                    get_total_reflectance, get_diffuse_reflectance
@@ -33,7 +33,7 @@ from mc.sim import MciWrapper, SimWrapper, \
 # be performed if this file exists.
 # Should the file be located somewhere else on your computer,
 # change this path to your actual location.
-path_to_gpumcml = os.path.join(get_mcml_exec(),'gpumcml.sm_20')
+path_to_gpumcml = os.path.join(get_mcml_path(), 'gpumcml.sm_20')
 #"/home/wirkert/workspace/monteCarlo/gpumcml/" + \
 #       "fast-gpumcml/gpumcml.sm_20"
 skip_gpu_tests = not os.path.exists(path_to_gpumcml)

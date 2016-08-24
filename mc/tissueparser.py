@@ -51,6 +51,7 @@ def read_tissue_config(file_name):
 
             # Assuming that the last element is distribution type
             tmp_layer_param.update_desription(param_val_str[-1])
+            tmp_layer_param.update_dist_type(param_val_str[-1])
 
             # To the temporary layer instance, add the parameter.
             tmp_layer.add_parameter(tmp_layer_param)
@@ -58,5 +59,8 @@ def read_tissue_config(file_name):
         # Add the newly created layer to the tissue instance.
         tissue_instance.append(tmp_layer)
         #tmp_layer = None
+
+    if not tissue_instance:  # empty lists are fals
+        raise IOError("could not find config file at " + file_name)
 
     return tissue_instance

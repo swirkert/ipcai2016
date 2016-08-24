@@ -26,28 +26,30 @@ import datetime
 import logging
 import os
 import time
+import sys
+import copy
 
 import luigi
 import mc.factories as mcfac
 import numpy as np
 from mc.sim import SimWrapper, get_diffuse_reflectance
+from mc import tissueparser
 
-from mc.mcmlpath import get_mcml_exec
+from mc.mcmlpath import get_mcml_path
 
 import commons
 
-
 # parameter setting
-NR_BATCHES = 15
-NR_ELEMENTS_IN_BATCH = 1000
+NR_BATCHES = 2
+NR_ELEMENTS_IN_BATCH = 10
 # the wavelengths to be simulated
-WAVELENGHTS = np.arange(450, 978, 2) * 10 ** -9
+WAVELENGHTS = np.arange(450, 978, 20) * 10 ** -9
 NR_PHOTONS = 10 ** 6
 
 # experiment configuration
 # this path definitly needs to be adapted by you
-PATH_TO_MCML = os.path.join(get_mcml_exec(),'gpumcml.sm_20')
-#"/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
+PATH_TO_MCML = get_mcml_path()
+
 EXEC_MCML = "gpumcml.sm_20"
 OUTPUT_ROOT_PATH = "/media/wirkert/data/Data/temp"
 
@@ -55,22 +57,29 @@ sc = commons.ScriptCommons()
 
 
 class CreateSpectraTask(luigi.Task):
-    df_prefix = luigi.Parameter()
+    tissue_file = luigi.Parameter()
     batch_nr = luigi.IntParameter()
     nr_samples = luigi.IntParameter()
     factory = luigi.Parameter()
 
     def output(self):
+        path, file = os.path.split(self.tissue_file)
+        df_prefix = os.path.splitext(file)[0]
+
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("MC_DATA_FOLDER"),
-                                              self.df_prefix + "_" +
+                                              df_prefix + "_" +
                                               str(self.batch_nr) + ".csv"))
 
     def run(self):
         start = time.time()
+
+        path, file = os.path.split(self.tissue_file)
+        df_prefix = os.path.splitext(file)[0]
+
         # Setup simulation wrapper
         sim_wrapper = SimWrapper()
         sim_wrapper.set_mcml_executable(os.path.join(PATH_TO_MCML, EXEC_MCML))
-        sim_wrapper.set_mci_filename(str(self.df_prefix) +
+        sim_wrapper.set_mci_filename(str(df_prefix) +
                                      "_Bat_" + str(self.batch_nr) + ".mci")
 
         # Setup tissue model
@@ -81,9 +90,13 @@ class CreateSpectraTask(luigi.Task):
             NR_ELEMENTS_IN_BATCH * WAVELENGHTS.shape[0])
         tissue_model.create_mci_file()
 
+        tissue_instance = tissueparser.read_tissue_config(self.tissue_file)
+
         # setup array in which data shall be stored
         batch = self.factory.create_batch_to_simulate()
-        batch.create_parameters(self.nr_samples)
+        batch.set_tissue_instance(tissue_instance)
+
+        batch.create_tissue_samples(self.nr_samples)
         # dataframe created by batch:
         df = batch.df
         # add reflectance column to dataframe
@@ -93,7 +106,7 @@ class CreateSpectraTask(luigi.Task):
         # Generate MCI file which contains list of all simulations in a Batch
         for i in range(df.shape[0]):
             # set the desired element in the dataframe to be simulated
-            base_mco_filename = _create_mco_filename_for(self.df_prefix,
+            base_mco_filename = _create_mco_filename_for(df_prefix,
                                                          self.batch_nr,
                                                          i)
             tissue_model.set_base_mco_filename(base_mco_filename)
@@ -108,7 +121,7 @@ class CreateSpectraTask(luigi.Task):
             for wavelength in WAVELENGHTS:
                 # for simulation get which mco file was created
                 simulation_path = os.path.split(sim_wrapper.mcml_executable)[0]
-                base_mco_filename = _create_mco_filename_for(self.df_prefix,
+                base_mco_filename = _create_mco_filename_for(df_prefix,
                                                              self.batch_nr,
                                                              i)
                 mco_filename = base_mco_filename + str(wavelength) + '.mco'
@@ -130,8 +143,7 @@ def _create_mco_filename_for(prefix, batch, simulation):
     return str(prefix) + "_Bat_" + str(batch) + "_Sim_" + str(simulation) + "_"
 
 
-if __name__ == '__main__':
-
+def main(args):
     # create a folder for the results if necessary
     sc.set_root(OUTPUT_ROOT_PATH)
     sc.create_folders()
@@ -151,20 +163,18 @@ if __name__ == '__main__':
     w = luigi.worker.Worker(scheduler=sch)
     BATCH_NUMBERS = np.arange(0, NR_BATCHES, 1)
     for i in BATCH_NUMBERS:
-        colon_test_task = CreateSpectraTask("ipcai_mean_scattering_test",
-                                       i,
-                                       NR_ELEMENTS_IN_BATCH,
-                                       mcfac.ColonMuscleMeanScatteringFactory())
-        colon_train_task = CreateSpectraTask("ipcai_mean_scattering_train",
-                                       i,
-                                       NR_ELEMENTS_IN_BATCH,
-                                       mcfac.ColonMuscleMeanScatteringFactory())
-        generic_task = CreateSpectraTask("ipcai_generic_mean_scattering_test",
-                                       i,
-                                       NR_ELEMENTS_IN_BATCH,
-                                       mcfac.GenericMeanScatteringFactory())
-        w.add(colon_train_task)
-        w.add(colon_test_task)
-        w.add(generic_task)
+        task = CreateSpectraTask(args[1],
+                                 i,
+                                 NR_ELEMENTS_IN_BATCH,
+                                 mcfac.GenericMcFactory())
+        w.add(task)
         w.run()
 
+
+if __name__ == '__main__':
+
+    args = copy.deepcopy(sys.argv)
+    if len(sys.argv) == 1:
+        args.append("/home/wirkert/workspace/ipcai2016_new/mc/data/tissues/laparoscopic_ipcai_colon_2016_08_23.ini")
+
+    main(args)

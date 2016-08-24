@@ -64,7 +64,6 @@ class LayerParam:
         self.values.append(value)
 
 
-
 class Layer:
 
     def __init__(self, parameter_list=None, description=None):
