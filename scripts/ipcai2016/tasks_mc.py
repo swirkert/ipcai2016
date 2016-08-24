@@ -79,22 +79,25 @@ class FilterTransmission(luigi.Task):
 
 class JoinBatches(luigi.Task):
     df_prefix = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + "_" + self.df_prefix + "_" +
+                                              _make_file_name_prefix(self.eval_name, self.df_prefix) +
                                               "all" + ".txt"))
 
     def run(self):
         # get all files in the search path
-        files = [f for f in os.listdir(sc.get_full_dir("MC_DATA_FOLDER"))
-                 if os.path.isfile(os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), f))]
-        # from these get only those who start with correct batch prefix
-        df_file_names = [os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), f)
-                         for f in files if f.startswith(self.df_prefix)]
+        batch_folder = os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), self.df_prefix)
+        batches = os.listdir(batch_folder)
+
+        # first get full path for each batch
+        batches = [os.path.join(batch_folder, f) for f in batches]
+        # now check if it is actually a file
+        batches = [f for f in batches if os.path.isfile(f)]
+
         # load these files
-        dfs = [pd.read_csv(f, header=[0, 1]) for f in df_file_names]
+        dfs = [pd.read_csv(f, header=[0, 1]) for f in batches]
         # now join them to one batch
         joined_df = pd.concat(dfs, ignore_index=True)
         # write it
@@ -105,14 +108,14 @@ class CameraBatch(luigi.Task):
     """takes a batch of reference data and converts it to the spectra
     processed by a camera with the specified wavelengths assuming a 10nm FWHM"""
     df_prefix = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return JoinBatches(self.df_prefix, self.expt_prefix)
+        return JoinBatches(self.df_prefix, self.eval_name)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + "_" + self.df_prefix +
+                                              _make_file_name_prefix(self.eval_name, self.df_prefix) +
                                               "_all_virtual_camera.txt"))
 
     def run(self):
@@ -131,14 +134,14 @@ class SpectrometerBatch(luigi.Task):
     df_prefix = luigi.Parameter()
     boxcar_smoothing = luigi.IntParameter() # how big is the boxcar to smooth
     # (in 2nm). So 8nm boxcars would be 4
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
         return JoinBatches(self.df_prefix)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + "_" + self.df_prefix + "_" +
+                                              _make_file_name_prefix(self.eval_name, self.df_prefix) +
                                               str(self.boxcar_smoothing) + "boxcar"
                                               "_all_spectrometer.txt"))
 
@@ -158,7 +161,7 @@ class SpectroCamBatch(luigi.Task):
     SpectroCam set-up.
     """
     df_prefix = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
         # all wavelengths must have been measured for transmission and stored in
@@ -169,11 +172,11 @@ class SpectroCamBatch(luigi.Task):
                                                                      ".txt")),
                         filenames)
 
-        return JoinBatches(self.df_prefix, self.expt_prefix), filenames
+        return JoinBatches(self.df_prefix, self.eval_name), filenames
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
-                                              self.expt_prefix + "_" + self.df_prefix + "_" +
+                                              _make_file_name_prefix(self.eval_name, self.df_prefix) +
                                               "_all_spectrocam.txt"))
 
     def run(self):
@@ -199,3 +202,7 @@ class SpectroCamBatch(luigi.Task):
                                    new_reflectances)
         # write it
         df.to_csv(self.output().path, index=False)
+
+
+def _make_file_name_prefix(eval_name, mc_data_name):
+    return eval_name + "_" + mc_data_name + "_"

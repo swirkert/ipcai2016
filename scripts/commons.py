@@ -22,6 +22,7 @@ Also it contains some utility methods.
 """
 
 import os
+import ConfigParser
 
 import numpy as np
 
@@ -121,3 +122,18 @@ def create_folder_if_necessary(folder):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
+
+def read_configuration_dict(experiment_ini_file):
+    ex_parser = ConfigParser.ConfigParser()
+    ex_parser.read(experiment_ini_file)
+
+    dict = {}
+    # put all the available options in the dict, discard section information
+    for section in ex_parser.sections():
+        for option in ex_parser.options(section):
+            dict[option] = ex_parser.get(section, option)
+
+    if not dict:
+        raise IOError("could not find experimental ini file at " + experiment_ini_file)
+
+    return dict

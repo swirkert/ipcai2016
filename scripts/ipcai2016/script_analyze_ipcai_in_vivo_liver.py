@@ -25,6 +25,7 @@ from PIL import Image
 from PIL import ImageEnhance
 import logging
 import datetime
+import sys
 
 import SimpleITK as sitk
 import matplotlib
@@ -40,10 +41,6 @@ TiffRingReader.RESIZE_FACTOR = 0.5
 
 sc = commons.ScriptCommons()
 
-
-EXPT_PREFIX = "STANDARD_"
-
-in_vivo_train = "ipcai_revision_colon_mean_scattering_train"
 
 sc.add_dir("LIVER_DATA",
            os.path.join(sc.get_dir("DATA_FOLDER"), "liver_images"))
@@ -141,10 +138,10 @@ class OxyAndVhbOverTimeTask(luigi.Task):
 class IPCAICreateOxyImageTask(luigi.Task):
     image_name = luigi.Parameter()
     df_prefix = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return IPCAITrainRegressor(df_prefix=self.df_prefix, expt_prefix=self.expt_prefix), \
+        return IPCAITrainRegressor(df_prefix=self.df_prefix, eval_name=self.eval_name), \
                Flatfield(flatfield_folder=sc.get_full_dir("FLAT_FOLDER")), \
                SingleMultispectralImage(image=os.path.join(
                        sc.get_full_dir("LIVER_DATA"), self.image_name)), \
@@ -277,10 +274,14 @@ class IPCAICreateOxyImageTask(luigi.Task):
         plt.close("all")
 
 
-if __name__ == '__main__':
+def main(args):
+    eval_dict = commons.read_configuration_dict(args[1])
+
+    eval_name = eval_dict["evaluation_name"]
+    train = eval_dict["in_vivo_mc_data_train"]
 
     # create a folder for the results if necessary
-    sc.set_root("/media/wirkert/data/Data/2016_02_02_IPCAI/")
+    sc.set_root(eval_dict["root_path"])
     sc.create_folders()
 
     # root folder there the data lies
@@ -304,8 +305,8 @@ if __name__ == '__main__':
 
     for f in first_invivo_image_files:
         main_task = IPCAICreateOxyImageTask(image_name=f,
-                df_prefix=in_vivo_train,
-                expt_prefix=EXPT_PREFIX)
+                df_prefix=train,
+                eval_name=eval_name)
         w.add(main_task)
 
     w.run()
@@ -314,3 +315,6 @@ if __name__ == '__main__':
     w.add(oxygenation_over_time_task)
     w.run()
 
+
+if __name__ == '__main__':
+    main(sys.argv)

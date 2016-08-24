@@ -27,7 +27,6 @@ import logging
 import os
 import time
 import sys
-import copy
 import ConfigParser
 
 import luigi
@@ -49,21 +48,17 @@ class CreateSpectraTask(luigi.Task):
     experiment_dict = luigi.Parameter()
 
     def output(self):
-        path, file = os.path.split(self.tissue_file)
-        df_prefix = os.path.splitext(file)[0]
+        simulated_data_folder=self._get_folder_name()
 
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("MC_DATA_FOLDER"),
-                                              df_prefix,
+                                              simulated_data_folder,
                                               str(self.batch_nr) + ".csv"))
 
     def run(self):
         start = time.time()
 
-        # determine df_prefix. Note code duplication in output method
-        # #FIX: avoid this by finding out how to amend something to the
-        # luigi constructor
-        path, file = os.path.split(self.tissue_file)
-        df_prefix = os.path.splitext(file)[0]
+        # the specific subfolder where the generated spectra shall be saved
+        simulated_data_folder=self._get_folder_name()
 
         # just to be a bit shorter in the code
         ex = self.experiment_dict
@@ -74,7 +69,7 @@ class CreateSpectraTask(luigi.Task):
                                 float(ex["wavelengths_step"])) * 10**-9
 
         # create folder for mci files if not exists
-        mci_folder = os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), df_prefix,
+        mci_folder = os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), simulated_data_folder,
                                   "mci")
         if not os.path.exists(mci_folder):
             os.makedirs(mci_folder)
@@ -108,7 +103,7 @@ class CreateSpectraTask(luigi.Task):
         # Generate MCI file which contains list of all simulations in a Batch
         for i in range(df.shape[0]):
             # set the desired element in the dataframe to be simulated
-            base_mco_filename = _create_mco_filename_for(df_prefix,
+            base_mco_filename = _create_mco_filename_for(simulated_data_folder,
                                                          self.batch_nr,
                                                          i)
             tissue_model.set_base_mco_filename(base_mco_filename)
@@ -123,7 +118,7 @@ class CreateSpectraTask(luigi.Task):
             for wavelength in wavelengths:
                 # for simulation get which mco file was created
                 simulation_path = os.path.split(sim_wrapper.mcml_executable)[0]
-                base_mco_filename = _create_mco_filename_for(df_prefix,
+                base_mco_filename = _create_mco_filename_for(simulated_data_folder,
                                                              self.batch_nr,
                                                              i)
                 mco_filename = base_mco_filename + str(wavelength) + '.mco'
@@ -140,25 +135,27 @@ class CreateSpectraTask(luigi.Task):
         logging.info("time for creating batch of mc data: %.f s" %
                      (end - start))
 
+    def _get_folder_name(self):
+        # return the folder where the generated data shall be saved.
+        if self.batch_nr < int(self.experiment_dict["nr_train_batches"]):
+            postfix = "train"
+        else:
+            postfix = "test"
+
+        tissue_file_path, tissue_file_name = os.path.split(self.tissue_file)
+
+        mc_folder_name = self.experiment_dict["experiment_name"] + "_" + \
+                         os.path.splitext(tissue_file_name)[0] + "_" + \
+                         postfix
+        return mc_folder_name
+
 
 def _create_mco_filename_for(prefix, batch, simulation):
     return str(prefix) + "_Bat_" + str(batch) + "_Sim_" + str(simulation) + "_"
 
 
-def _read_experiment_ini(experiment_ini_file):
-    ex_parser = ConfigParser.ConfigParser()
-    ex_parser.read(experiment_ini_file)
-
-    dict = {}
-    # put all the available options in the dict, discard section information
-    for section in ex_parser.sections():
-        for option in ex_parser.options(section):
-            dict[option] = ex_parser.get(section, option)
-    return dict
-
-
 def main(args):
-    experiment_dict = _read_experiment_ini(args[1])
+    experiment_dict = commons.read_configuration_dict(args[1])
 
     # create a folder for the results if necessary
     sc.set_root(experiment_dict["root_path"])
@@ -189,5 +186,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-
     main(sys.argv)

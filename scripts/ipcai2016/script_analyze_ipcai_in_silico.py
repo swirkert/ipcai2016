@@ -27,6 +27,7 @@ import datetime
 import logging
 import os
 from collections import namedtuple
+import sys
 
 import luigi
 import matplotlib
@@ -41,12 +42,6 @@ from regression.preprocessing import preprocess, preprocess2
 from regression.linear import LinearSaO2Unmixing
 
 import commons
-
-INPUT_ROOT_PATH = "/media/wirkert/data/Data/2016_02_02_IPCAI"
-train = "ipcai_revision_colon_mean_scattering_train"
-test = "ipcai_revision_colon_mean_scattering_test"
-test_different_domain = "ipcai_revision_generic_mean_scattering"
-EXPT_PREFIX = "STANDARD_"
 
 
 ##########################################################
@@ -92,15 +87,15 @@ noise_levels = np.array([1,2,3,4,5,6,7,8,9,10,
 class TrainingSamplePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
-               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
+        return tasks_mc.CameraBatch(self.which_train, self.eval_name), \
+               tasks_mc.CameraBatch(self.which_test, self.eval_name)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              self.expt_prefix + "sample_plot_train_" +
+                                              self.eval_name + "_sample_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
                                               ".png"))
@@ -163,15 +158,15 @@ class TrainingSamplePlot(luigi.Task):
 class VhbPlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
-               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
+        return tasks_mc.CameraBatch(self.which_train, self.eval_name), \
+               tasks_mc.CameraBatch(self.which_test, self.eval_name)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              self.expt_prefix + "vhb_noise_plot_train_" +
+                                              self.eval_name + "_vhb_noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
                                               ".png"))
@@ -208,14 +203,14 @@ class VhbPlot(luigi.Task):
 class NoisePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
-               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
+        return tasks_mc.CameraBatch(self.which_train, self.eval_name), \
+               tasks_mc.CameraBatch(self.which_test, self.eval_name)
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              self.expt_prefix + "noise_plot_train_" +
+                                              self.eval_name + "_noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
                                               ".png"))
@@ -237,15 +232,15 @@ class WrongNoisePlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
     train_snr = luigi.FloatParameter()
-    expt_prefix = luigi.Parameter()
+    eval_name = luigi.Parameter()
 
     def requires(self):
-        return tasks_mc.CameraBatch(self.which_train, self.expt_prefix), \
-               tasks_mc.CameraBatch(self.which_test, self.expt_prefix)
+        return tasks_mc.CameraBatch(self.which_train, self.eval_name), \
+               tasks_mc.CameraBatch(self.which_test, self.eval_name)
 
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
-                                              self.expt_prefix + str(self.train_snr) +
+                                              self.eval_name + "_" + str(self.train_snr) +
                                               "_wrong_noise_plot_train_" +
                                               self.which_train +
                                               "_test_" + self.which_test +
@@ -338,13 +333,21 @@ def standard_plotting(df, color_palette=None, xytext_position=None):
     plt.legend()
 
 
-if __name__ == '__main__':
 
-    sc.set_root(INPUT_ROOT_PATH)
+
+def main(args):
+    eval_dict = commons.read_configuration_dict(args[1])
+
+    eval_name = eval_dict["evaluation_name"]
+    train = eval_dict["mc_data_train"]
+    test = eval_dict["mc_data_test"]
+    test_different_domain = eval_dict["mc_data_test_generic"]
+
+    sc.set_root(eval_dict["root_path"])
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
-                                              EXPT_PREFIX + "in_silico_plots_" +
+                                              eval_name + "_in_silico_plots_" +
                                               str(datetime.datetime.now()) +
                                               '.log'),
                         level=logging.INFO)
@@ -354,17 +357,19 @@ if __name__ == '__main__':
     logger.addHandler(ch)
     luigi.interface.setup_interface_logging()
 
-
-
     sch = luigi.scheduler.CentralPlannerScheduler()
     w = luigi.worker.Worker(scheduler=sch)
-    w.add(TrainingSamplePlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
-    w.add(NoisePlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=10., expt_prefix=EXPT_PREFIX))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50., expt_prefix=EXPT_PREFIX))
-    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200., expt_prefix=EXPT_PREFIX))
+    w.add(TrainingSamplePlot(which_train=train, which_test=test, eval_name=eval_name))
+    w.add(NoisePlot(which_train=train, which_test=test, eval_name=eval_name))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=10., eval_name=eval_name))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=50., eval_name=eval_name))
+    w.add(WrongNoisePlot(which_train=train, which_test=test, train_snr=200., eval_name=eval_name))
     # Set a different testing domain to evaluate domain sensitivity
     w.add(NoisePlot(which_train=train,
-                   which_test=test_different_domain, expt_prefix=EXPT_PREFIX))
-    w.add(VhbPlot(which_train=train, which_test=test, expt_prefix=EXPT_PREFIX))
+                   which_test=test_different_domain, eval_name=eval_name))
+    w.add(VhbPlot(which_train=train, which_test=test, eval_name=eval_name))
     w.run()
+
+
+if __name__ == '__main__':
+    main(sys.argv)
