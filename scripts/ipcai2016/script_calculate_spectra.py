@@ -67,20 +67,28 @@ class CreateSpectraTask(luigi.Task):
         df_prefix = os.path.splitext(file)[0]
 
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("MC_DATA_FOLDER"),
-                                              df_prefix + "_" +
+                                              df_prefix,
                                               str(self.batch_nr) + ".csv"))
 
     def run(self):
         start = time.time()
 
+        # determine df_prefix. Note code duplication in output method
+        # #FIX: avoid this by finding out how to amend something to the
+        # luigi constructor
         path, file = os.path.split(self.tissue_file)
         df_prefix = os.path.splitext(file)[0]
+
+        # create folder for mci files if not exists
+        mci_folder = os.path.join(sc.get_full_dir("MC_DATA_FOLDER"), df_prefix,
+                                  "mci")
+        if not os.path.exists(mci_folder):
+            os.makedirs(mci_folder)
 
         # Setup simulation wrapper
         sim_wrapper = SimWrapper()
         sim_wrapper.set_mcml_executable(os.path.join(PATH_TO_MCML, EXEC_MCML))
-        sim_wrapper.set_mci_filename(str(df_prefix) +
-                                     "_Bat_" + str(self.batch_nr) + ".mci")
+        sim_wrapper.set_mci_filename(os.path.join(mci_folder, "Bat_" + str(self.batch_nr) + ".mci"))
 
         # Setup tissue model
         tissue_model = self.factory.create_tissue_model()
@@ -96,9 +104,8 @@ class CreateSpectraTask(luigi.Task):
         batch = self.factory.create_batch_to_simulate()
         batch.set_tissue_instance(tissue_instance)
 
-        batch.create_tissue_samples(self.nr_samples)
-        # dataframe created by batch:
-        df = batch.df
+        # create the tissue samples and return them in dataframe df
+        df = batch.create_tissue_samples(self.nr_samples)
         # add reflectance column to dataframe
         for w in WAVELENGHTS:
             df["reflectances", w] = np.NAN
