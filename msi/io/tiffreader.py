@@ -23,7 +23,7 @@ Created on Sep 28, 2015
 
 import os
 
-import Image
+import PIL.Image as Image
 import scipy
 import numpy as np
 

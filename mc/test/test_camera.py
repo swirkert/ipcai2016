@@ -21,7 +21,8 @@ class TestCamera(unittest.TestCase):
         wavelengths = np.linspace(400, 700, self.nr_wavelengths) * 10**-9  # nm
         filters = np.ones((self.nr_bands, self.nr_wavelengths))
         self.imaging_system = cam.ImagingSystem(wavelengths=wavelengths,
-                                                F=filters
+                                                F=filters)
+
     def test_reflectance_transform(self):
         reflectance = 0.5 * np.ones(self.nr_wavelengths)
         # we expect a normalized result with all values equal.
