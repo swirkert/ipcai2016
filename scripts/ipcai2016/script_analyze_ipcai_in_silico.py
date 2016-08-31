@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from sklearn.ensemble.forest import RandomForestRegressor
+from sklearn.metrics import r2_score
 
 import tasks_mc
 from regression.preprocessing import preprocess, preprocess2
@@ -51,7 +52,6 @@ sc = commons.ScriptCommons()
 sc.add_dir("IN_SILICO_RESULTS_PATH", os.path.join(sc.get_dir("RESULTS_FOLDER"),
                                      "in_silico"))
 
-sc.other["RECORDED_WAVELENGTHS"] = np.arange(470, 700, 10) * 10 ** -9
 
 w_standard = 10.  # for this evaluation we add 10% noise
 
@@ -289,10 +289,14 @@ def evaluate_data(df_train, w_train, df_test, w_test,
             # save results to a dataframe
             errors = np.abs(y_pred - y_test)
             errors = errors.reshape(len(errors), 1)
+
+            r2 = r2_score(y_test, y_pred)
+
             current_df = DataFrame(errors * 100,
                                    columns=["absolute error [%]"])
             current_df["Method"] = e.name
             current_df["SNR"] = int(one_w_test)
+            current_df["r2"] = r2
             df = pd.concat([df, current_df], ignore_index=True)
 
     return df
@@ -333,8 +337,6 @@ def standard_plotting(df, color_palette=None, xytext_position=None):
     plt.legend()
 
 
-
-
 def main(args):
     eval_dict = commons.read_configuration_dict(args[1])
 
@@ -342,6 +344,12 @@ def main(args):
     train = eval_dict["mc_data_train"]
     test = eval_dict["mc_data_test"]
     test_different_domain = eval_dict["mc_data_test_generic"]
+
+    w_start = float(eval_dict["simulated_wavelengths_start"])
+    w_end = float(eval_dict["simulated_wavelengths_stop"])
+    w_step = float(eval_dict["simulated_wavelengths_step"])
+    sc.other["RECORDED_WAVELENGTHS"] = np.arange(w_start, w_end, w_step) * 10 ** -9
+
 
     sc.set_root(eval_dict["root_path"])
     sc.create_folders()

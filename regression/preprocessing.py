@@ -25,8 +25,11 @@ import pandas as pd
 from sklearn.preprocessing import Normalizer
 
 
-def preprocess2(df, nr_samples=None, snr=None, movement_noise_sigma=None,
-                magnification=None, bands_to_sortout=None):
+def preprocess2(df, nr_samples=None, snr=None,
+                magnification=None, bands_to_sortout=None, y_parameters=None):
+
+    if y_parameters is None:
+        y_parameters = ["sao2", "vhb"]
 
     # first set 0 reflectances to nan
     df["reflectances"] = df["reflectances"].replace(to_replace=0.,
@@ -44,7 +47,7 @@ def preprocess2(df, nr_samples=None, snr=None, movement_noise_sigma=None,
         X.drop(X.columns[bands_to_sortout], axis=1, inplace=True)
         snr = np.delete(snr, bands_to_sortout)
     X = X.values
-    y = df.layer0[["sao2", "vhb"]]
+    y = df.layer0[y_parameters]
 
     # do data magnification
     if magnification is not None:
@@ -61,27 +64,28 @@ def preprocess2(df, nr_samples=None, snr=None, movement_noise_sigma=None,
         noises = np.random.normal(loc=0., scale=1, size=X.shape)
         camera_noise = sigmas*noises
 
-    movement_noise = 0.
-    if movement_noise_sigma is not None:
-        nr_bands = X.shape[1]
-        nr_samples = X.shape[0]
-        # we assume no correlation between neighboring bands
-        CORRELATION_COEFFICIENT = 0.0
-        movement_variance = movement_noise_sigma ** 2
-        movement_variances = np.ones(nr_bands) * movement_variance
-        movement_covariances = np.ones(nr_bands-1) * CORRELATION_COEFFICIENT * \
-            movement_variance
-        movement_covariance_matrix = np.diag(movement_variances) + \
-            np.diag(movement_covariances, -1) + \
-            np.diag(movement_covariances, 1)
-        # percentual sample errors
-        sample_errors_p = np.random.multivariate_normal(mean=np.zeros(nr_bands),
-                cov=movement_covariance_matrix,
-                size=nr_samples)
-        # errors w.r.t. the curve height.
-        movement_noise = X * sample_errors_p
+    # movement noise: experimental, deactivated for now.
+    # movement_noise = 0.
+    # if movement_noise_sigma is not None:
+    #     nr_bands = X.shape[1]
+    #     nr_samples = X.shape[0]
+    #     # we assume no correlation between neighboring bands
+    #     CORRELATION_COEFFICIENT = 0.0
+    #     movement_variance = movement_noise_sigma ** 2
+    #     movement_variances = np.ones(nr_bands) * movement_variance
+    #     movement_covariances = np.ones(nr_bands-1) * CORRELATION_COEFFICIENT * \
+    #         movement_variance
+    #     movement_covariance_matrix = np.diag(movement_variances) + \
+    #         np.diag(movement_covariances, -1) + \
+    #         np.diag(movement_covariances, 1)
+    #     # percentual sample errors
+    #     sample_errors_p = np.random.multivariate_normal(mean=np.zeros(nr_bands),
+    #             cov=movement_covariance_matrix,
+    #             size=nr_samples)
+    #     # errors w.r.t. the curve height.
+    #     movement_noise = X * sample_errors_p
 
-    X += camera_noise + movement_noise
+    X += camera_noise # + movement_noise
 
     X = np.clip(X, 0.00001, 1.)
     # do normalizations

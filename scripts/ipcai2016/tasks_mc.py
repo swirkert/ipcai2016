@@ -108,6 +108,7 @@ class CameraBatch(luigi.Task):
     """takes a batch of reference data and converts it to the spectra
     processed by a camera with the specified wavelengths assuming a 10nm FWHM"""
     df_prefix = luigi.Parameter()
+    fwhm = luigi.Parameter()
     eval_name = luigi.Parameter()
 
     def requires(self):
@@ -116,13 +117,14 @@ class CameraBatch(luigi.Task):
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("INTERMEDIATES_FOLDER"),
                                               _make_file_name_prefix(self.eval_name, self.df_prefix) +
+                                              "FWHM" + str(self.fwhm) +
                                               "_all_virtual_camera.txt"))
 
     def run(self):
         # load dataframe
         df = pd.read_csv(self.input().path, header=[0, 1])
         # camera batch creation:
-        dfmani.fold_by_fwhm(df, 10*10**-9)
+        dfmani.fold_by_fwhm(df, self.fwhm)
         dfmani.interpolate_wavelengths(df, sc.other["RECORDED_WAVELENGTHS"])
         # write it
         df.to_csv(self.output().path, index=False)
