@@ -32,6 +32,8 @@ def sample(X_s, y_s, X_t, step_size=5, window_size=(20, 20),  local_cov=False):
     Returns: (X_resampled, y_resampled) : (n21xn22xm resampled multi spectral image, n21xn22 dimensional labels)
     """
     # we always want to work with "an image"
+    if len(X_t.shape) == 1:
+        X_t = X_t.reshape((1, X_t.shape[0]))
     if len(X_t.shape) == 2:
         X_t = X_t.reshape((X_t.shape[0], 1, -1))
     if len(y_s.shape) == 1:
@@ -46,12 +48,14 @@ def sample(X_s, y_s, X_t, step_size=5, window_size=(20, 20),  local_cov=False):
         inv_cov_estimate = inv_cov_calculator.determine_inv_cov(window)
         # determine similarity
         X_s_centered = X_s - center
-        d_maha = np.sum(np.dot(X_s_centered, inv_cov_estimate) * X_s_centered,
-                        axis=1)
-        p_maha = distance_to_probablility(d_maha)
+        # d_maha = np.sum(np.dot(X_s_centered, inv_cov_estimate) * X_s_centered,
+        #                 axis=1)
+        # p_maha = distance_to_probablility(d_maha)
+        d_euclid = np.sum(np.square(X_s_centered), axis=1)
 
         # draw elements and add to results
-        max_idx = np.argmax(p_maha)
+        #max_idx = np.argmax(p_maha)
+        max_idx = np.argmin(d_euclid)
         sampled_array[i, j, :] = X_s[max_idx, :]
         y_resampled[i, j, :] = y_s[max_idx, :]
         print i, j
