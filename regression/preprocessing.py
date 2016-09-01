@@ -58,39 +58,21 @@ def preprocess2(df, nr_samples=None, snr=None,
             y = pd.concat([y, y_temp])
 
     # add noise to reflectances
-    camera_noise = 0.
-    if snr is not None:
-        sigmas = X / snr
-        noises = np.random.normal(loc=0., scale=1, size=X.shape)
-        camera_noise = sigmas*noises
-
-    # movement noise: experimental, deactivated for now.
-    # movement_noise = 0.
-    # if movement_noise_sigma is not None:
-    #     nr_bands = X.shape[1]
-    #     nr_samples = X.shape[0]
-    #     # we assume no correlation between neighboring bands
-    #     CORRELATION_COEFFICIENT = 0.0
-    #     movement_variance = movement_noise_sigma ** 2
-    #     movement_variances = np.ones(nr_bands) * movement_variance
-    #     movement_covariances = np.ones(nr_bands-1) * CORRELATION_COEFFICIENT * \
-    #         movement_variance
-    #     movement_covariance_matrix = np.diag(movement_variances) + \
-    #         np.diag(movement_covariances, -1) + \
-    #         np.diag(movement_covariances, 1)
-    #     # percentual sample errors
-    #     sample_errors_p = np.random.multivariate_normal(mean=np.zeros(nr_bands),
-    #             cov=movement_covariance_matrix,
-    #             size=nr_samples)
-    #     # errors w.r.t. the curve height.
-    #     movement_noise = X * sample_errors_p
-
-    X += camera_noise # + movement_noise
+    X = add_snr(X, snr)
 
     X = np.clip(X, 0.00001, 1.)
     # do normalizations
     X = normalize(X)
     return X, y
+
+
+def add_snr(X, snr):
+    camera_noise = 0.
+    if snr is not None:
+        sigmas = X / snr
+        noises = np.random.normal(loc=0., scale=1, size=X.shape)
+        camera_noise = sigmas*noises
+    return X + camera_noise
 
 
 def preprocess(batch, nr_samples=None, snr=None, movement_noise_sigma=None,

@@ -46,14 +46,13 @@ def sample(X_s, y_s, X_t, step_size=5, window_size=(20, 20),  local_cov=False):
         inv_cov_estimate = inv_cov_calculator.determine_inv_cov(window)
         # determine similarity
         X_s_centered = X_s - center
-        d_maha = np.sum(np.dot(X_s_centered, inv_cov_estimate) * X_s_centered,
-                        axis=1)
         p_maha = distance_to_probablility(d_maha)
 
-        # # draw elements and  add them to results
-        chosen_idx = np.random.choice(choice_indices, 1, p=p_maha)
-        sampled_array[i, j, :] = X_s[chosen_idx, :]
-        y_resampled[i, j, :] = y_s[chosen_idx, :]
+        # draw elements and add to results
+        max_idx = np.argmax(p_maha)
+        sampled_array[i, j, :] = X_s[max_idx, :]
+        y_resampled[i, j, :] = y_s[max_idx, :]
+        print i, j
 
     return np.squeeze(sampled_array[:i+1, :j+1, :]), np.squeeze(y_resampled[:i+1, :j+1, :])
 
@@ -82,8 +81,8 @@ def distance_to_probablility(d_maha):
     # use of divide will set division by zero values to 0
     inv_d_maha = np.divide(1., d_maha)
     # now calculate probablility
-    #e_inv_d_maha = np.exp(inv_d_maha)  # tried to do it with softmax
-    return inv_d_maha / np.sum(inv_d_maha)
+    e_inv_d_maha = np.exp(inv_d_maha)  # tried to do it with softmax
+    return e_inv_d_maha / np.sum(e_inv_d_maha)
 
 
 # adapted from
