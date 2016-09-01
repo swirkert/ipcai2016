@@ -55,8 +55,6 @@ sc.add_dir("IN_SILICO_RESULTS_PATH", os.path.join(sc.get_dir("RESULTS_FOLDER"),
 # emory universities camera full width at half maximum:
 fwhm = 20*10**-9
 
-w_standard = 10.  # for this evaluation we add 10% noise
-
 font = {'family' : 'normal',
         'size'   : 20}
 
@@ -82,13 +80,12 @@ standard_evaluation_setups = [EvaluationStruct("Linear Beer-Lambert",
 my_colors = ["red", "green"]
 
 # standard noise levels
-noise_levels = np.array([5, 10, 50, 100, 200]).astype("float")
+noise_levels = np.array([5, 10, 50, 100]).astype("float")
 
 
 class PhysiologicalParameterPlot(luigi.Task):
     which_train = luigi.Parameter()
     which_test = luigi.Parameter()
-    train_snr = luigi.Parameter()
     physiological_parameter = luigi.Parameter()
     eval_name = luigi.Parameter()
 
@@ -102,7 +99,6 @@ class PhysiologicalParameterPlot(luigi.Task):
                                               self.physiological_parameter +
                                               "_noise_plot_train_" +
                                               self.which_train + "_" +
-                                              str(self.train_snr) + "SNR_"
                                               "_test_" + self.which_test +
                                               ".png"))
 
@@ -122,8 +118,7 @@ class PhysiologicalParameterPlot(luigi.Task):
         # for vhb we only evaluate the proposed method since the linear
         # beer-lambert is not applicable
         evaluation_setups = [EvaluationStruct("Proposed", rf)]
-        df = evaluate_data(df_train, np.ones_like(noise_levels) * self.train_snr,
-                           df_test, noise_levels,
+        df = evaluate_data(df_train, noise_levels, df_test, noise_levels,
                            evaluation_setups=evaluation_setups,
                            preprocessing=self.preprocess_paramter)
         standard_plotting(df, color_palette=["green"],
@@ -204,6 +199,7 @@ def standard_plotting(df, color_palette=None, xytext_position=None,
     mean_r2 = df["r2"].mean()
     plt.xlabel("SNR")
     plt.ylabel("absolute error [%]")
+    plt.ylim([0.,0.25])
     plt.title("evaluating " + parameter_name + ". Mean r2: " + str(mean_r2))
     plt.grid()
     plt.legend()
@@ -239,24 +235,24 @@ def main(args):
     w = luigi.worker.Worker(scheduler=sch)
 
     w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     train_snr=10., physiological_parameter="sao2",
+                                     physiological_parameter="sao2",
                                      eval_name=eval_name))
 
     w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     train_snr=10., physiological_parameter="vhb",
+                                     physiological_parameter="vhb",
                                      eval_name=eval_name))
-
-    w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     train_snr=10., physiological_parameter="a_mie",
-                                     eval_name=eval_name))
-
-    w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     train_snr=10., physiological_parameter="a_ray",
-                                     eval_name=eval_name))
-
-    w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     train_snr=10., physiological_parameter="d",
-                                     eval_name=eval_name))
+    #
+    # w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
+    #                                  train_snr=10., physiological_parameter="a_mie",
+    #                                  eval_name=eval_name))
+    #
+    # w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
+    #                                  train_snr=10., physiological_parameter="a_ray",
+    #                                  eval_name=eval_name))
+    #
+    # w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
+    #                                  train_snr=10., physiological_parameter="d",
+    #                                  eval_name=eval_name))
     w.run()
 
 
