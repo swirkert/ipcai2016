@@ -47,7 +47,7 @@ def preprocess2(df, nr_samples=None, snr=None,
         X.drop(X.columns[bands_to_sortout], axis=1, inplace=True)
         snr = np.delete(snr, bands_to_sortout)
     X = X.values
-    y = df.layer0[y_parameters]
+    y = df.layer0[list(y_parameters)]
 
     # do data magnification
     if magnification is not None:
