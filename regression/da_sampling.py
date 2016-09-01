@@ -46,6 +46,8 @@ def sample(X_s, y_s, X_t, step_size=5, window_size=(20, 20),  local_cov=False):
         inv_cov_estimate = inv_cov_calculator.determine_inv_cov(window)
         # determine similarity
         X_s_centered = X_s - center
+        d_maha = np.sum(np.dot(X_s_centered, inv_cov_estimate) * X_s_centered,
+                        axis=1)
         p_maha = distance_to_probablility(d_maha)
 
         # draw elements and add to results
