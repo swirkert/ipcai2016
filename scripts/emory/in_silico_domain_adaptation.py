@@ -229,7 +229,7 @@ def main(args):
     sc.create_folders()
 
     logging.basicConfig(filename=os.path.join(sc.get_full_dir("LOG_FOLDER"),
-                                              eval_name + "_in_silico_plots_" +
+                                              eval_name + "_in_silico_da_plots_" +
                                               str(datetime.datetime.now()) +
                                               '.log'),
                         level=logging.INFO)
