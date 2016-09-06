@@ -23,5 +23,10 @@ def get_mcml_path():
 
     # Read the tissue configuration file
     # MODIFY THIS PATH FOR YOUR INSTALLATION
-    mcml_exec_path = "/home/wirkert/workspace/monteCarlo/gpumcml/fast-gpumcml/"
+    mcml_exec_path = ''
+    try:
+        if not mcml_exec_path:
+            raise ValueError('ERROR: Empty path. Please modify the path in mcmlpath.py.')
+    except ValueError as e:
+        print(e)
     return mcml_exec_path
