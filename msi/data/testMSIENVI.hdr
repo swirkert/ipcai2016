@@ -1,0 +1,17 @@
+ENVI
+description = {CMV2K-SSM4x4-470_620-3.2.4.6}
+file type = ENVI
+sensor type =
+ihspt version = 2.4.1
+interleave = bil
+samples = 512
+lines = 256
+bands = 16
+header offset = 0
+data type = 12
+byte order = 0
+x start = 0
+y start = 0
+max value = 1023
+default bands = {15,  7,  2}
+Wavelength = {471.16, 477.89, 490.55, 502.43, 513.86, 524.65, 539.23, 551.21, 553.97, 565.75, 579.25, 591.74, 601.43, 611.97, 622.93, 630.87}
