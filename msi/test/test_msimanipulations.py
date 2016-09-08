@@ -146,7 +146,7 @@ class TestMsiManipulations(unittest.TestCase):
 
     def test_flatfield_correction(self):
         desired_image_data = np.ones_like(self.specialmsi.get_image())
-        desired_image_data[2, 2, 0] = np.nan
+        desired_image_data[2, 2, 0] = 0
 
         mani.flatfield_correction(self.specialmsi, self.specialmsi)
 
@@ -159,7 +159,7 @@ class TestMsiManipulations(unittest.TestCase):
         FLATFIELD_INTEGRATION_TIME = 2.0
         desired_image_data = np.ones_like(self.specialmsi.get_image()) * \
              FLATFIELD_INTEGRATION_TIME / MSI_INTEGRATION_TIME
-        desired_image_data[2, 2, 0] = np.nan
+        desired_image_data[2, 2, 0] = 0
         self.specialmsi.add_property({"integration times":
                                       np.ones_like(
                                         self.specialmsi.get_image()[0, 0, :])

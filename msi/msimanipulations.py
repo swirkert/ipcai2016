@@ -130,7 +130,9 @@ def flatfield_correction(msi, flatfield):
     normalize_integration_times(flatfield_copy)
     normalize_integration_times(msi)
 
-    msi.set_image(msi.get_image().astype(float) / flatfield_copy.get_image().astype(float))
+    im_corrected = msi.get_image().astype(float)/flatfield_copy.get_image().astype(float)
+    im_corrected[~np.isfinite(im_corrected)] = 0.
+    msi.set_image(im_corrected)
     return msi
 
 
