@@ -32,28 +32,13 @@ import msi.msimanipulations as msimani
 from regression.preprocessing import preprocess2
 from msi.io.tiffringreader import TiffRingReader
 
+from helpers.file_operations import *
+
 sc = commons.ScriptCommons()
 
 """
 Collection of functions and luigi.Task s which are used by more than one script
 """
-
-
-def get_image_files_from_folder(folder,
-                                prefix="", suffix=".tiff", fullpath=False):
-    # small helper function to get all the image files in a folder
-    # it will only return files which end with suffix.
-    # if fullpath==True it will return the full path of the file, otherwise
-    # only the filename
-    # get all filenames
-    image_files = [f for f in os.listdir(folder) if
-                   os.path.isfile(os.path.join(folder, f))]
-    image_files.sort()
-    image_files = [f for f in image_files if f.endswith(suffix)]
-    image_files = [f for f in image_files if f.startswith(prefix)]
-    if fullpath:  # expand to full path if wished
-        image_files = [os.path.join(folder, f) for f in image_files]
-    return image_files
 
 
 def plot_image(image, axis=None, title=None, cmap=None):

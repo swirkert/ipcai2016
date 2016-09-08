@@ -34,8 +34,6 @@ from mc.sim import MciWrapper, SimWrapper, \
 # Should the file be located somewhere else on your computer,
 # change this path to your actual location.
 path_to_gpumcml = os.path.join(get_mcml_path(), 'gpumcml.sm_20')
-#"/home/wirkert/workspace/monteCarlo/gpumcml/" + \
-#       "fast-gpumcml/gpumcml.sm_20"
 skip_gpu_tests = not os.path.exists(path_to_gpumcml)
 
 this_dir, this_filename = os.path.split(__file__)

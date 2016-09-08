@@ -35,6 +35,7 @@ from msi.io.tiffringreader import TiffRingReader
 from regression.estimation import estimate_image
 
 from tasks_common import *
+from helpers.file_operations import *
 
 TiffRingReader.RESIZE_FACTOR = 0.5
 
