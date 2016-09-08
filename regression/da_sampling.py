@@ -58,7 +58,6 @@ def sample(X_s, y_s, X_t, step_size=5, window_size=(20, 20),  local_cov=False):
         max_idx = np.argmin(d_euclid)
         sampled_array[i, j, :] = X_s[max_idx, :]
         y_resampled[i, j, :] = y_s[max_idx, :]
-        print i, j
 
     return np.squeeze(sampled_array[:i+1, :j+1, :]), np.squeeze(y_resampled[:i+1, :j+1, :])
 
