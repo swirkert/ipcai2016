@@ -60,13 +60,13 @@ def plot_image(image, axis=None, title=None, cmap=None):
     if axis is None:
         axis = plt.gca()
     if cmap is None:
-        im = axis.imshow(image, interpolation='nearest', alpha=1.0)
+        axis.imshow(image, interpolation='nearest', alpha=1.0)
     else:
         im = axis.imshow(image, interpolation='nearest', alpha=1.0,
                             cmap=cmap)
         divider = make_axes_locatable(axis)
         cax = divider.append_axes("right", size="20%", pad=0.05)
-        cbar = plt.colorbar(im, cax=cax)
+        plt.colorbar(im, cax=cax)
 
     axis.xaxis.set_visible(False)
     axis.yaxis.set_visible(False)

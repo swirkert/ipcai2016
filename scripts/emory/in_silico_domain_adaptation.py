@@ -220,9 +220,9 @@ def main(args):
     validate = eval_dict["mc_data_validate"]
     test = eval_dict["mc_data_test"]
 
-    w_start = float(eval_dict["simulated_wavelengths_start"])
-    w_end = float(eval_dict["simulated_wavelengths_stop"])
-    w_step = float(eval_dict["simulated_wavelengths_step"])
+    w_start = float(eval_dict["wavelengths_start"])
+    w_end = float(eval_dict["wavelengths_stop"])
+    w_step = float(eval_dict["wavelengths_step"])
     sc.other["RECORDED_WAVELENGTHS"] = np.arange(w_start, w_end, w_step) * 10 ** -9
 
     sc.set_root(eval_dict["root_path"])

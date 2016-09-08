@@ -62,7 +62,7 @@ matplotlib.rc('font', **font)
 
 
 # setup standard random forest
-rf = RandomForestRegressor(10, min_samples_leaf=10, max_depth=9, n_jobs=-1)
+rf = RandomForestRegressor(100, min_samples_leaf=10, max_depth=14, n_jobs=-1)
 EvaluationStruct = namedtuple("EvaluationStruct",
                               "name regressor")
 # standard evaluation setup
@@ -96,7 +96,7 @@ class PhysiologicalParameterPlot(luigi.Task):
     def output(self):
         return luigi.LocalTarget(os.path.join(sc.get_full_dir("IN_SILICO_RESULTS_PATH"),
                                               self.eval_name + "_" +
-                                              self.physiological_parameter +
+                                              self.physiological_parameter[0] +
                                               "_noise_plot_train_" +
                                               self.which_train + "_" +
                                               "_test_" + self.which_test +
@@ -108,7 +108,7 @@ class PhysiologicalParameterPlot(luigi.Task):
         X, y = preprocess2(batch, nr_samples, snr,
                            magnification, bands_to_sortout, self.physiological_parameter)
 
-        return X, y.values
+        return X, np.squeeze(y.values)
 
     def run(self):
         # get data
@@ -200,7 +200,7 @@ def standard_plotting(df, color_palette=None, xytext_position=None,
     plt.xlabel("SNR")
     plt.ylabel("absolute error [%]")
     plt.ylim([0.,0.25])
-    plt.title("evaluating " + parameter_name + ". Mean r2: " + str(mean_r2))
+    plt.title("evaluating " + str(parameter_name) + ". Mean r2: " + str(mean_r2))
     plt.grid()
     plt.legend()
 
@@ -212,9 +212,9 @@ def main(args):
     train = eval_dict["mc_data_train"]
     test = eval_dict["mc_data_test"]
 
-    w_start = float(eval_dict["simulated_wavelengths_start"])
-    w_end = float(eval_dict["simulated_wavelengths_stop"])
-    w_step = float(eval_dict["simulated_wavelengths_step"])
+    w_start = float(eval_dict["wavelengths_start"])
+    w_end = float(eval_dict["wavelengths_stop"])
+    w_step = float(eval_dict["wavelengths_step"])
     sc.other["RECORDED_WAVELENGTHS"] = np.arange(w_start, w_end, w_step) * 10 ** -9
 
     sc.set_root(eval_dict["root_path"])
@@ -235,11 +235,11 @@ def main(args):
     w = luigi.worker.Worker(scheduler=sch)
 
     w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     physiological_parameter="sao2",
+                                     physiological_parameter=["sao2"],
                                      eval_name=eval_name))
 
     w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
-                                     physiological_parameter="vhb",
+                                     physiological_parameter=["vhb"],
                                      eval_name=eval_name))
     #
     # w.add(PhysiologicalParameterPlot(which_train=train, which_test=test,
