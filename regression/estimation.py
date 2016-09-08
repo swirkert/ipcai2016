@@ -42,6 +42,20 @@ def estimate_image(msi, regressor):
         msi: multi spectral image
         regressor: regressor, must implement the predict method"""
 
+    np_image, estimation_time = estimate_np_image(msi, regressor)
+    # save as sitk nrrd.
+    sitk_img = sitk.GetImageFromArray(np_image,
+                                 isVector=True)
+    return sitk_img, estimation_time
+
+
+def estimate_np_image(msi, regressor):
+    """given an Msi and an regressor estimate the parmaeters for this image
+
+    Paramters:
+        msi: multi spectral image
+        regressor: regressor, must implement the predict method"""
+
     # estimate parameters
     collapsed_msi = imgmani.collapse_image(msi.get_image())
     # in case of nan values: set to 0
@@ -63,10 +77,9 @@ def estimate_image(msi, regressor):
             estimated_parameters, (msi.get_image().shape[0],
                                    msi.get_image().shape[1],
                                    feature_dimension))
-    # save as sitk nrrd.
-    sitk_img = sitk.GetImageFromArray(estimated_paramters_as_image,
-                                 isVector=True)
-    return sitk_img, estimation_time
+
+    return estimated_paramters_as_image, estimation_time
+
 
 def standard_score(estimator, X, y):
     """our standard scoring method is the median absolute error"""
