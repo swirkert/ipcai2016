@@ -32,6 +32,10 @@ TOP = "/media/wirkert/data/Data/2016_09_08_Ximea"
 EXPERIMENT = "color_targets"
 CAMERA = "ximea"
 
+color_tiles_loc = "Color_tiles_exposure_adapted"
+#color_tiles_loc = "Color_tiles_exposure_8000us"
+pixel_location = (124,266)
+
 # create a folder for the results if necessary
 sc.set_root(TOP)
 
@@ -39,7 +43,7 @@ sc.add_dir("INTERMEDIATES_FOLDER",
            os.path.join(sc.get_dir("INTERMEDIATES_FOLDER"), EXPERIMENT))
 
 sc.add_dir("COLOR_TARGET_RESULTS",
-           os.path.join(sc.get_dir("RESULTS_FOLDER"), EXPERIMENT, CAMERA))
+           os.path.join(sc.get_dir("RESULTS_FOLDER"), EXPERIMENT, color_tiles_loc + "_px_" + str(pixel_location)))
 
 
 def plot_imaging_system(F, w):
@@ -93,13 +97,16 @@ def plot_compare(S, C, F, w, d):
         # otherwise problems with datatype (object v int):
         cam_meas.columns = spectro.columns
 
-        relative_errors = (1 - spectro / cam_meas) * 100.
+        relative_errors = np.abs((1 - spectro / cam_meas) * 100.)
         relative_errors.reset_index(inplace=True)
+        mean_errors = np.mean(relative_errors.values, axis=1)
+        for i, index in enumerate(relative_errors["index"]):
+            relative_errors["index"][i] = str(index) + " -- error: " + str(np.round(mean_errors[i], decimals=2)) + "%"
         relative_errors = pd.melt(relative_errors,
                                   id_vars="index", var_name ="camera_band",
-                                  value_name="relative error [%]")
-        grid = sns.FacetGrid(relative_errors, col="index", col_wrap=6)
-        grid.map(plt.bar, "camera_band", "relative error [%]")
+                                  value_name="abs relative error [%]")
+        grid = sns.FacetGrid(relative_errors, col="index", col_wrap=6, ylim=(0, 25))
+        grid.map(plt.bar, "camera_band", "abs relative error [%]")
 
         plt.savefig(out_path + "relative.png" + name, dpi=250)
 
@@ -111,7 +118,7 @@ def plot_compare(S, C, F, w, d):
         df_cam = pd.concat((cam_meas, spectro), ignore_index=True)
         df_cam = pd.melt(df_cam, id_vars=["index", "device"],
                      var_name="camera_band", value_name=name + " response")
-        grid = sns.FacetGrid(df_cam, col="index", hue="device", col_wrap=6)
+        grid = sns.FacetGrid(df_cam, col="index", hue="device", col_wrap=6, ylim=(0., .15))
         grid.map(plt.plot, "camera_band", name + " response", marker="o", ms=4)
         grid.add_legend()
 
@@ -167,15 +174,16 @@ if __name__ == '__main__':
                                  str(datetime.datetime.now()) +
                                  '.log'), level=logging.INFO)
 
+
     F_folder = os.path.join(TOP, "Ximea_software", "xiSpec-calibration-data",
                             "CMV2K-SSM4x4-470_620-9.2.4.11.xml")
-    S_folder = os.path.join(TOP, "data", "spectrometer", "Color_tiles_Exposure_adapted")
-    C_folder = os.path.join(TOP, "data", "Ximea_recordings", "Color_tiles_exposure_adapted")
+    S_folder = os.path.join(TOP, "data", "spectrometer", color_tiles_loc)
+    C_folder = os.path.join(TOP, "data", "Ximea_recordings", color_tiles_loc)
 
     F = cc.get_camera_calibration_info_df(F_folder)
     S = sm.get_all_spectrometer_measurements_as_df(S_folder)
-    C = pd.DataFrame(cr.get_camera_reflectances(C_folder, suffix='.bsq'))
-    C_uncalibrated = pd.DataFrame(cr.get_camera_reflectances_uncorrected(C_folder, suffix='.bsq'))
+    C = pd.DataFrame(cr.get_camera_reflectances(C_folder, suffix='.bsq', pixel_location=pixel_location))
+    C_uncalibrated = pd.DataFrame(cr.get_camera_reflectances_uncorrected(C_folder, suffix='.bsq', pixel_location=pixel_location))
     dark = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "dark.txt"))
     white = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "white.txt"))
 
@@ -189,8 +197,8 @@ if __name__ == '__main__':
     sc.other["RECORDED_WAVELENGTHS"] = S.columns
 
     # specify tasks
-    plot_spectro_measurements = plot_raw_spectrometer(S, white, dark)
-    plot_imaging_system = plot_imaging_system(F_new, white)
+    # plot_spectro_measurements = plot_raw_spectrometer(S, white, dark)
+    # plot_imaging_system = plot_imaging_system(F_new, white)
     plot_mapping = plot_compare(S, C, F_new,
                                 white, dark)
     plot_raw_camera = plot_raw_camera(C_uncalibrated)
