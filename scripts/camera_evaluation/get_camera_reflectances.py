@@ -21,7 +21,7 @@ import numpy as np
 
 
 def get_camera_reflectances(folder, prefix='', suffix='.tiff',
-                            pixel_location=(124,256)):
+                            pixel_location=(124,256), size=(10, 10)):
     file_names = get_image_files_from_folder(folder=folder, prefix=prefix,
                                              suffix=suffix, fullpath=False)
 
@@ -35,18 +35,21 @@ def get_camera_reflectances(folder, prefix='', suffix='.tiff',
 
     for i in xrange(0,len(file_names)):
         msi = file_reader.read(fileToRead=os.path.join(folder,
-                                                       file_names[i][:-4]),
+                                                       file_names[i][:-len(suffix)]),
                               header_ext='.hdr', file_ext=suffix)
 
         msi_selection_mani = mani.image_correction(msi, white_image, dark_image)
+        image_roi = msi_selection_mani.get_image()[pixel_location[0]:pixel_location[0]+size[0],
+                    pixel_location[1]:pixel_location[1]+size[1], :]
+        image_mean = np.mean(image_roi, axis=(0, 1))
 
-        reflectance_values.append(msi_selection_mani.get_image()[pixel_location])
+        reflectance_values.append(image_mean)
 
     return np.array(reflectance_values)
 
 
 def get_camera_reflectances_uncorrected(folder, prefix='',suffix='.tiff',
-                                        pixel_location=(124,256)):
+                                        pixel_location=(114,256), size=(10, 10)):
 
     file_names = get_image_files_from_folder(folder=folder, prefix=prefix,
                                              suffix=suffix, fullpath=False)
@@ -56,11 +59,12 @@ def get_camera_reflectances_uncorrected(folder, prefix='',suffix='.tiff',
 
     for i in xrange(0,len(file_names)):
         msi = file_reader.read(fileToRead=os.path.join(folder,
-                                                       file_names[i][:-4]),
+                                                       file_names[i][:-len(suffix)]),
                               header_ext='.hdr', file_ext=suffix)
-
-
-        reflectance_values_uncorrected.append(msi.get_image()[pixel_location])
+        image_roi = msi.get_image()[pixel_location[0]:pixel_location[0]+size[0],
+                    pixel_location[1]:pixel_location[1]+size[1], :]
+        image_mean = np.mean(image_roi, axis=(0, 1))
+        reflectance_values_uncorrected.append(image_mean)
 
     return np.array(reflectance_values_uncorrected)
 

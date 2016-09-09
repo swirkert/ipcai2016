@@ -34,7 +34,8 @@ CAMERA = "ximea"
 
 color_tiles_loc = "Color_tiles_exposure_adapted"
 #color_tiles_loc = "Color_tiles_exposure_8000us"
-pixel_location = (124,266)
+pixel_location = (80, 228)
+window_size = (50, 65)
 
 # create a folder for the results if necessary
 sc.set_root(TOP)
@@ -43,7 +44,7 @@ sc.add_dir("INTERMEDIATES_FOLDER",
            os.path.join(sc.get_dir("INTERMEDIATES_FOLDER"), EXPERIMENT))
 
 sc.add_dir("COLOR_TARGET_RESULTS",
-           os.path.join(sc.get_dir("RESULTS_FOLDER"), EXPERIMENT, color_tiles_loc + "_px_" + str(pixel_location)))
+           os.path.join(sc.get_dir("RESULTS_FOLDER"), EXPERIMENT, color_tiles_loc + "_px_" + str(pixel_location)) + "_ws_" + str(window_size))
 
 
 def plot_imaging_system(F, w):
@@ -56,18 +57,19 @@ def plot_imaging_system(F, w):
     w.index = wavelengths_nm
     F.columns = wavelengths_nm
 
-    # some renaming to make the legend nicer
-    w.columns = ["light source"]
+    F_matrix = F.values
+    index_w = (wavelengths_nm > 400) & (wavelengths_nm < 700)
+    F_matrix = F_matrix[:, index_w]
+    selected_w = wavelengths_nm[index_w]
+    nr_bands = F_matrix.shape[0]
 
-    # now plot
-    F.T.plot()
-    w.plot(ax=plt.gca(), style="--")
+    fig, axarr = plt.subplots(nr_bands, 1, sharex=True, sharey=True)
 
-    # some tightening up the plot
-    plt.ylim([0, 1.1])
-    plt.ylabel("response [au]")
-    plt.xlabel("wavelengths [nm]")
-    plt.gca().legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    for i in range(nr_bands):
+        axarr[i].plot(selected_w, F_matrix[i, :])
+        # some tightening up the plot
+        axarr[i].get_yaxis().set_visible(False)
+        axarr[i].set_xlabel("wavelengths [nm]")
 
     #save
     out_path = os.path.join(sc.get_full_dir("COLOR_TARGET_RESULTS"),
@@ -150,6 +152,10 @@ def plot_raw_spectrometer(S, white, dark):
     S_t["white"] = white
 
     S_t["wavelengths [nm]"] = S_t.index.astype(float) * 10**9
+    w = S_t["wavelengths [nm]"].values
+    index_w = (w > 400) & (w < 700)
+
+    S_t = S_t.iloc[index_w, :]
 
     df = pd.melt(S_t, id_vars=["wavelengths [nm]"],
                  var_name=EXPERIMENT, value_name="raw reflectances")
@@ -174,7 +180,6 @@ if __name__ == '__main__':
                                  str(datetime.datetime.now()) +
                                  '.log'), level=logging.INFO)
 
-
     F_folder = os.path.join(TOP, "Ximea_software", "xiSpec-calibration-data",
                             "CMV2K-SSM4x4-470_620-9.2.4.11.xml")
     S_folder = os.path.join(TOP, "data", "spectrometer", color_tiles_loc)
@@ -182,8 +187,9 @@ if __name__ == '__main__':
 
     F = cc.get_camera_calibration_info_df(F_folder)
     S = sm.get_all_spectrometer_measurements_as_df(S_folder)
-    C = pd.DataFrame(cr.get_camera_reflectances(C_folder, suffix='.bsq', pixel_location=pixel_location))
-    C_uncalibrated = pd.DataFrame(cr.get_camera_reflectances_uncorrected(C_folder, suffix='.bsq', pixel_location=pixel_location))
+    C_np = cr.get_camera_reflectances(C_folder, suffix='.bsq', pixel_location=pixel_location, size=window_size)
+    C = pd.DataFrame(C_np)
+    C_uncalibrated = pd.DataFrame(cr.get_camera_reflectances_uncorrected(C_folder, suffix='.bsq', pixel_location=pixel_location, size=window_size))
     dark = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "dark.txt"))
     white = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "white.txt"))
 
@@ -197,8 +203,8 @@ if __name__ == '__main__':
     sc.other["RECORDED_WAVELENGTHS"] = S.columns
 
     # specify tasks
-    # plot_spectro_measurements = plot_raw_spectrometer(S, white, dark)
-    # plot_imaging_system = plot_imaging_system(F_new, white)
+    plot_spectro_measurements = plot_raw_spectrometer(S, white, dark)
+    plot_imaging_system = plot_imaging_system(F_new, white)
     plot_mapping = plot_compare(S, C, F_new,
                                 white, dark)
     plot_raw_camera = plot_raw_camera(C_uncalibrated)
