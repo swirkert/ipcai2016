@@ -13,11 +13,11 @@ class EnviReader(Reader):
     def __init__(self):
         pass
 
-    def read(self, fileToRead):
+    def read(self, fileToRead, header_ext='.hdr', file_ext='.raw'):
         """ read the envi image."""
 
-        image = envi.open(fileToRead+'.hdr',
-                          fileToRead+'.raw')
+        image = envi.open(fileToRead+header_ext,
+                          fileToRead+file_ext)
 
         # NOTE: This does not work for ordered dictionaries
         w= [float(s) for s in image.metadata.pop('wavelength')]

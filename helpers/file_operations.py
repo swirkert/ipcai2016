@@ -19,7 +19,8 @@ See LICENSE for details
 import os
 
 
-def get_image_files_from_folder(folder, prefix="", suffix=".tiff", fullpath=False):
+def get_image_files_from_folder(folder,
+                                prefix="", suffix=".tiff", fullpath=False):
     # small helper function to get all the image files in a folder
     # it will only return files which end with suffix.
     # if fullpath==True it will return the full path of the file, otherwise
