@@ -64,10 +64,10 @@ class ImagingSystem:
         if d is None:
             d = np.zeros(m)
 
-        self.q = q
-        self.F = F
-        self.w = w
-        self.d = d
+        self.q = np.squeeze(q)
+        self.F = np.squeeze(F)
+        self.w = np.squeeze(w)
+        self.d = np.squeeze(d)
 
     def get_v(self):
         return self.F.shape[0]

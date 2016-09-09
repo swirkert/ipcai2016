@@ -44,6 +44,7 @@ def get_camera_reflectances(folder, prefix='', suffix='.tiff',
 
     return np.array(reflectance_values)
 
+
 def get_camera_reflectances_uncorrected(folder, prefix='',suffix='.tiff',
                                         pixel_location=(124,256)):
 
