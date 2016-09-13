@@ -65,7 +65,7 @@ class ImagingSystem:
             d = np.zeros(m)
 
         self.q = np.squeeze(q)
-        self.F = np.squeeze(F)
+        self.F = F
         self.w = np.squeeze(w)
         self.d = np.squeeze(d)
 
@@ -83,7 +83,7 @@ class ImagingSystem:
         return self.get_v()
 
 
-def calibrate(C, S, start_imaging_system):
+def calibrate(C, S, start_imaging_system ):
     """
     Relates measurements S made by a spectrometer with
     measurements of the same point made by a camera C.
@@ -161,7 +161,7 @@ def transform_reflectance(imaging_system, R):
     return np.squeeze(normalize(C))
 
 
-def transform_color(imaging_system, S):
+def transform_color(imaging_system, S, normalize_color=True):
     """
     Given a set of spectrometer measurements (nxm),
     transform them to what the imaging system measures (no noise added).
@@ -189,7 +189,10 @@ def transform_color(imaging_system, S):
               np.trapz(q_times_Fk * (i.w - i.d), i.wavelengths)
         C[:, k] = C_k
 
-    return np.squeeze(normalize(C))
+    if normalize_color:
+        C = normalize(C)
+
+    return np.squeeze(C)
 
 
 def _nr_samples_to_transform(X):

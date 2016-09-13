@@ -54,6 +54,7 @@ def get_camera_calibration_info_df(filename):
     df = pd.DataFrame(data=cc.get_bands(), columns=cc.get_wavelengths())
     return df
 
+
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testName']
     get_camera_calibration_info_df("/media/wirkert/data/Data/2016_09_08_Ximea/Ximea_software/xiSpec-calibration-data/CMV2K-SSM4x4-470_620-9.2.4.11.xml")
