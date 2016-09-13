@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from msi.io.spectrometerreader import SpectrometerReader
-from ipcai2016.tasks_common import get_image_files_from_folder
+from helpers.file_operations import *
 
 
 def get_all_spectrometer_measurements(folder):
