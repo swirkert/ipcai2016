@@ -19,13 +19,14 @@ def get_principle_components_info_df(filename):
     principal_components = np.zeros((fr_shape[0], 2, fr_shape[1]))
     for i in range(fr_matrix.shape[0]):
         if i < 8:
-            mask = w < 575*10**9
+            mask = w*10**9 < 575
         else:
-            mask = w < 525*10**9
+            mask = w*10**9 < 525
         principal_components[i, 0, :] = fr_matrix[i, :]
         principal_components[i, 1, :] = fr_matrix[i, :]
         principal_components[i, 0, ~mask] = 0.
         principal_components[i, 1,  mask] = 0.
+
     return principal_components
 
 
@@ -41,39 +42,44 @@ def get_corrected_filter_responses_df(calibration_file, S, C, w, d, s_wav):
     w = _to_F_wav(s_wav, w, F_wav)
     d = _to_F_wav(s_wav, d, F_wav)
 
-    def optimization_function(x0, C_opt, S_opt, imaging_system, pc_i_T):
+    C = C / np.sum(C, axis=1)[:, np.newaxis]
+
+    def optimization_function(x0, C_opt, S_opt, imaging_system, pc):
         # first take the current guess and set the imaging system
         # to this updated value:
         modified_imaging_system = copy.deepcopy(imaging_system)
-        modified_imaging_system.F = _eval_filter_basis(pc_i_T, x0)
+        modified_imaging_system.F = _eval_filter_basis(pc, x0)
         # now use the new imaging system to estimate C from S
         C_estimated = transform_color(modified_imaging_system, S_opt,
-                                      normalize_color=False)
+                                      normalize_color=True)
         # return quadratic error
         return np.sum((C_opt-C_estimated)**2)
 
-    # for each filter, try to fit it as good as possible to the measurements
-    for i in range(filters.shape[0]):
-        pc_i_T = pc[i].T  # mx2
-        # use available knowledge to start
-        F_i = F[i, :][np.newaxis, :]  # 1 x m
-        C_i = C[:, i]
-        imaging_system = ImagingSystem(F_wav, F_i, q=None, w=w, d=d)
-        # find factors for principle components
-        x0 = np.ones(pc.shape[1])
-        # start optimization
-        x0_opt = scipy.optimize.least_squares(optimization_function, x0,
-                                              bounds=(0., np.inf),
-                                              args=(C_i, S, imaging_system, pc_i_T))["x"]
-        print i, x0_opt
-        F_opt[i, :] = _eval_filter_basis(pc_i_T, x0_opt)
+    imaging_system = ImagingSystem(F_wav, F, q=None, w=w, d=d)
+    # find factors for principle components
+    x0 = np.ones(pc.shape[0] * pc.shape[1])
+    x0_opt = x0
+    # start optimization
+    x0_opt = scipy.optimize.least_squares(optimization_function, x0,
+                                          bounds=(0., np.inf),
+                                          args=(C, S, imaging_system, pc))["x"]
+    # x0_opt = scipy.optimize.minimize(optimization_function, x0,
+    #                                  args=(C, S, imaging_system, pc),
+    #                                  method='Nelder-Mead',
+    #                                  options={"maxiter":10000}
+    #                                  )["x"]
+    F_opt = _eval_filter_basis(pc, x0_opt)
     df = pd.DataFrame(data=F_opt, columns=filters.columns)
     return df
 
 
 def _eval_filter_basis(basis, factors):
     # basis as column vectors, factors as 1-d
-    return np.dot(basis, factors[:, np.newaxis]).T
+    result = np.zeros((basis.shape[0], basis.shape[2]))
+    pairwise_factors = np.reshape(factors, (-1, basis.shape[1]))
+    for i, b in enumerate(basis):
+        result[i] = np.dot(b.T, pairwise_factors[i, :])
+    return result
 
 
 def _to_F_wav(spectro_wav, spectro, f_wav):
@@ -107,8 +113,8 @@ if __name__ == "__main__":
     d = sm.get_spectrometer_measurement(os.path.join(TOP, "data", "spectrometer", "dark.txt"))
     w = sm.get_spectrometer_measurement(os.path.join(TOP, "data", "spectrometer", "white.txt"))
 
-    hack_it = hack_get_integration_times()
-    C_np = C_np / hack_it[:, np.newaxis]
+    # hack_it = hack_get_integration_times()
+    # C_np = C_np / hack_it[:, np.newaxis]
 
     get_corrected_filter_responses_df(calib_file, S.values, C_np, w, d, S.columns)
 
