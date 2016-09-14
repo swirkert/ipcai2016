@@ -12,7 +12,6 @@ import logging
 import datetime
 import numpy as np
 import pandas as pd
-from scipy import interpolate
 
 import matplotlib.pylab as plt
 import seaborn as sns
@@ -48,15 +47,9 @@ sc.add_dir("COLOR_TARGET_RESULTS",
            os.path.join(sc.get_dir("RESULTS_FOLDER"), EXPERIMENT, color_tiles_loc + "_px_" + str(pixel_location)) + "_ws_" + str(window_size))
 
 
-def plot_imaging_system(F, w):
-    # bring to same scale
-    F = F / F.max().max()
-    w = w / w.max()
-
+def plot_imaging_system(F, title):
     # convert wavelengths from m to nm for nicer plotting
-    wavelengths_nm = w.index * 10**9
-    w.index = wavelengths_nm
-    F.columns = wavelengths_nm
+    wavelengths_nm = F.columns * 10**9
 
     F_matrix = F.values
     index_w = (wavelengths_nm > 400) & (wavelengths_nm < 700)
@@ -68,18 +61,17 @@ def plot_imaging_system(F, w):
 
     for i in range(nr_bands):
         axarr[i].plot(selected_w, F_matrix[i, :])
-        # some tightening up the plot
+        # some tidying up the plot
         axarr[i].get_yaxis().set_visible(False)
         axarr[i].set_xlabel("wavelengths [nm]")
 
     #save
-    out_path = os.path.join(sc.get_full_dir("COLOR_TARGET_RESULTS"),
-                            "transform.png")
+    out_path = os.path.join(sc.get_full_dir("COLOR_TARGET_RESULTS"), title)
     plt.savefig(out_path, dpi=250, mode="png", bbox_inches='tight')
 
 
 def plot_compare(S, C, F, w, d):
-    wavelengths = sc.other["RECORDED_WAVELENGTHS"]
+    wavelengths = S.columns
     # initialize information about imaging system
     imaging_system = ImagingSystem(wavelengths, F.values, w=w.values, d=d.values)
     # now transform the spectrometer measurements to the cam space
@@ -93,7 +85,7 @@ def plot_compare(S, C, F, w, d):
 
 def plot_compare_adapted(S, C, F, w, d, pc):
     # F in the original recorded wavelengths.
-    wavelengths = sc.other["RECORDED_WAVELENGTHS"]
+    wavelengths = S.columns
     # the spectrometer measuremnts will be transformed to C
     transformed_colors = np.zeros_like(C.values)
     # for each color tile
@@ -110,7 +102,7 @@ def plot_compare_adapted(S, C, F, w, d, pc):
         imaging_system = ImagingSystem(wavelengths, F_new, w=w.values, d=d.values)
         # now transform the spectrometer measurements to the cam space
         transformed_colors_i = transform_color(imaging_system, S.values[i,:])
-        transformed_colors[i,:] = transformed_colors_i
+        transformed_colors[i, :] = transformed_colors_i
     # store results in pandas dataframe
     spectro_meas_cam_space = pd.DataFrame(data=transformed_colors)
 
@@ -224,16 +216,16 @@ if __name__ == '__main__':
     white = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "white.txt"))
     pc = cfr.get_principle_components(F_folder)
 
-    # use the wavelengths recorded by the spectrometer as basis for the eval
-    sc.other["RECORDED_WAVELENGTHS"] = S.columns
-
     # interpolate the F values to fit the wavelengths recorded
     # by the spectrometer
-    F_new = cfr.to_wav_df(F.columns, F, S.columns)
+    F_new = pd.DataFrame(cfr.to_wav_df(F.columns, F, S.columns), columns=S.columns)
+    # calculated the adapted filter responses
+    F_adapted = cfr.get_corrected_filter_responses_df(S, C, F, white, dark, pc)
 
     # specify tasks
     plot_raw_spectrometer(S, white, dark)
-    plot_imaging_system(F_new, white)
+    plot_imaging_system(F, "transform.png")
+    plot_imaging_system(F_adapted, "transform_adapted.png")
     plot_compare(S, C, F_new, white, dark)
     plot_compare_adapted(S, C, F, white, dark, pc)
     plot_raw_camera(C_uncalibrated)

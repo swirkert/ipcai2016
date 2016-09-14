@@ -1,5 +1,4 @@
 import copy
-import os
 
 import numpy as np
 import pandas as pd
@@ -7,8 +6,6 @@ import scipy
 
 from mc.camera import transform_color, ImagingSystem
 import get_camera_calibration_info as cc
-import get_spectrometer_measurements as sm
-import get_camera_reflectances as cr
 
 
 def get_principle_components(filename):
