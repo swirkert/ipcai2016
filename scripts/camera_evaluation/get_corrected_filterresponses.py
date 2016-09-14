@@ -11,7 +11,7 @@ import get_spectrometer_measurements as sm
 import get_camera_reflectances as cr
 
 
-def get_principle_components_info_df(filename):
+def get_principle_components(filename):
     filter_responses = cc.get_camera_calibration_info_df(filename)
     w = filter_responses.columns
     fr_matrix = filter_responses.values
@@ -30,19 +30,17 @@ def get_principle_components_info_df(filename):
     return principal_components
 
 
-def get_corrected_filter_responses_df(calibration_file, S, C, w, d, s_wav):
-    filters = cc.get_camera_calibration_info_df(calibration_file)
-    F_wav = filters.columns
-    F = filters.values
-    pc = get_principle_components_info_df(calibration_file)
-    F_opt = np.zeros_like(F)
-
+def get_corrected_filter_responses_df(S, C, F, w, d, pc):
+    # transform input which is in pandas dataframes to np arrays
+    F_wav = F.columns
+    F = F.values
     # transform spectrometer measurements to F wavelengths:
-    S = _to_F_wav(s_wav, S, F_wav)
-    w = _to_F_wav(s_wav, w, F_wav)
-    d = _to_F_wav(s_wav, d, F_wav)
+    spectrometer_wavelengths = S.columns
+    S = to_wav_df(spectrometer_wavelengths, S, F_wav)
+    w = to_wav_df(spectrometer_wavelengths, w, F_wav)
+    d = to_wav_df(spectrometer_wavelengths, d, F_wav)
 
-    C = C / np.sum(C, axis=1)[:, np.newaxis]
+    C = C.values / np.sum(C.values, axis=1)[:, np.newaxis]
 
     def optimization_function(x0, C_opt, S_opt, imaging_system, pc):
         # first take the current guess and set the imaging system
@@ -58,18 +56,12 @@ def get_corrected_filter_responses_df(calibration_file, S, C, w, d, s_wav):
     imaging_system = ImagingSystem(F_wav, F, q=None, w=w, d=d)
     # find factors for principle components
     x0 = np.ones(pc.shape[0] * pc.shape[1])
-    x0_opt = x0
     # start optimization
     x0_opt = scipy.optimize.least_squares(optimization_function, x0,
                                           bounds=(0., np.inf),
                                           args=(C, S, imaging_system, pc))["x"]
-    # x0_opt = scipy.optimize.minimize(optimization_function, x0,
-    #                                  args=(C, S, imaging_system, pc),
-    #                                  method='Nelder-Mead',
-    #                                  options={"maxiter":10000}
-    #                                  )["x"]
     F_opt = _eval_filter_basis(pc, x0_opt)
-    df = pd.DataFrame(data=F_opt, columns=filters.columns)
+    df = pd.DataFrame(data=F_opt, columns=F_wav)
     return df
 
 
@@ -82,10 +74,15 @@ def _eval_filter_basis(basis, factors):
     return result
 
 
-def _to_F_wav(spectro_wav, spectro, f_wav):
+def to_wav_df(spectro_wav, spectro, f_wav):
+    return to_wav(spectro_wav, spectro.values, f_wav)
+
+
+def to_wav(spectro_wav, spectro, f_wav):
     # interpolate the spectrometer values to fit the wavelengths recorded
     # by the filter calibration
-    f = scipy.interpolate.interp1d(spectro_wav, spectro, bounds_error=False, fill_value=0.)
+    f = scipy.interpolate.interp1d(spectro_wav, np.squeeze(spectro),
+                                   bounds_error=False, fill_value=0.)
     s_new = f(f_wav)
     return s_new
 
@@ -96,25 +93,4 @@ def hack_get_integration_times():
                      18.1, 54.6, 16.6, 68.6, 27.1, 15.1,
                      38.9, 15.1, 38.1, 68.6, 28.1, 26.6])
 
-if __name__ == "__main__":
-    # import sys;sys.argv = ['', 'Test.testName']
-    TOP = "/media/wirkert/data/Data/2016_09_08_Ximea"
-    color_tiles_loc = "Color_tiles_exposure_adapted"
-    pixel_location = (80, 228)
-    window_size = (50, 65)
-
-    calib_file = os.path.join(TOP, "Ximea_software/xiSpec-calibration-data/CMV2K-SSM4x4-470_620-9.2.4.11.xml")
-    S_folder = os.path.join(TOP, "data", "spectrometer", color_tiles_loc)
-    C_folder = os.path.join(TOP, "data", "Ximea_recordings", color_tiles_loc)
-
-    S = sm.get_all_spectrometer_measurements_as_df(S_folder)
-    C_np = cr.get_camera_reflectances(C_folder, suffix='.bsq', pixel_location=pixel_location, size=window_size)
-    C = pd.DataFrame(C_np)
-    d = sm.get_spectrometer_measurement(os.path.join(TOP, "data", "spectrometer", "dark.txt"))
-    w = sm.get_spectrometer_measurement(os.path.join(TOP, "data", "spectrometer", "white.txt"))
-
-    # hack_it = hack_get_integration_times()
-    # C_np = C_np / hack_it[:, np.newaxis]
-
-    get_corrected_filter_responses_df(calib_file, S.values, C_np, w, d, S.columns)
 

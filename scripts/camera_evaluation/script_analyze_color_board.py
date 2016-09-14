@@ -21,6 +21,7 @@ from mc.camera import ImagingSystem, transform_color
 import get_camera_calibration_info as cc
 import get_spectrometer_measurements as sm
 import get_camera_reflectances as cr
+import get_corrected_filterresponses as cfr
 
 import commons
 
@@ -86,47 +87,35 @@ def plot_compare(S, C, F, w, d):
     # store results in pandas dataframe
     spectro_meas_cam_space = pd.DataFrame(data=transformed_colors)
 
-    out_path = os.path.join(sc.get_full_dir("COLOR_TARGET_RESULTS"),
-                            "compare.png")
+    out_path = sc.get_full_dir("COLOR_TARGET_RESULTS")
+    _plot_for_values(spectro_meas_cam_space, C, out_path, "compare.png")
 
-    def plot_for_values(spectro, cam_meas, name):
 
-        #normalize by l1
-        def norm(values):
-            return values / np.sum(values)
-        spectro = spectro.apply(norm, 1)
-        cam_meas = cam_meas.apply(norm, 1)
-        # otherwise problems with datatype (object v int):
-        cam_meas.columns = spectro.columns
+def plot_compare_adapted(S, C, F, w, d, pc):
+    # F in the original recorded wavelengths.
+    wavelengths = sc.other["RECORDED_WAVELENGTHS"]
+    # the spectrometer measuremnts will be transformed to C
+    transformed_colors = np.zeros_like(C.values)
+    # for each color tile
+    for i in range(S.shape[0]):
+        # remove the tile from the data to be fitted
+        S_i = S.drop(S.index[i])
+        C_i = C.drop(C.index[i])
+        # adapt F (basically this is cross validation)
+        F_i = cfr.get_corrected_filter_responses_df(S_i, C_i, F, w, d, pc)
 
-        relative_errors = np.abs((1 - spectro / cam_meas) * 100.)
-        relative_errors.reset_index(inplace=True)
-        mean_errors = np.mean(relative_errors.values, axis=1)
-        for i, index in enumerate(relative_errors["index"]):
-            relative_errors["index"][i] = str(index) + " -- error: " + str(np.round(mean_errors[i], decimals=2)) + "%"
-        relative_errors = pd.melt(relative_errors,
-                                  id_vars="index", var_name ="camera_band",
-                                  value_name="abs relative error [%]")
-        grid = sns.FacetGrid(relative_errors, col="index", col_wrap=6, ylim=(0, 25))
-        grid.map(plt.bar, "camera_band", "abs relative error [%]")
+        F_new = cfr.to_wav(F_i.columns, F_i, S.columns)
 
-        plt.savefig(out_path + "relative.png" + name, dpi=250)
+        # initialize information about imaging system
+        imaging_system = ImagingSystem(wavelengths, F_new, w=w.values, d=d.values)
+        # now transform the spectrometer measurements to the cam space
+        transformed_colors_i = transform_color(imaging_system, S.values[i,:])
+        transformed_colors[i,:] = transformed_colors_i
+    # store results in pandas dataframe
+    spectro_meas_cam_space = pd.DataFrame(data=transformed_colors)
 
-        cam_meas.reset_index(inplace=True)
-        cam_meas["device"] = CAMERA
-        spectro.reset_index(inplace=True)
-        spectro["device"] = "Spectrometer"
-
-        df_cam = pd.concat((cam_meas, spectro), ignore_index=True)
-        df_cam = pd.melt(df_cam, id_vars=["index", "device"],
-                     var_name="camera_band", value_name=name + " response")
-        grid = sns.FacetGrid(df_cam, col="index", hue="device", col_wrap=6, ylim=(0., .15))
-        grid.map(plt.plot, "camera_band", name + " response", marker="o", ms=4)
-        grid.add_legend()
-
-        plt.savefig(out_path + name, dpi=250)
-
-    plot_for_values(spectro_meas_cam_space, C, "")
+    out_path = sc.get_full_dir("COLOR_TARGET_RESULTS")
+    _plot_for_values(spectro_meas_cam_space, C, out_path, "compare_adapted.png")
 
 
 def plot_raw_camera(C_uncalibrated):
@@ -146,15 +135,57 @@ def plot_raw_camera(C_uncalibrated):
     plt.savefig(out_path, dpi=250, mode="png")
 
 
+def _plot_for_values(spectro, cam_meas, path, name):
+    """
+    Actual plotting method for comparison of spectrometer and camera measurements
+
+    :param spectro: spectrometer measurements transformed to camera space
+    :param cam_meas: flatfield corrected camera measurements
+    :param path: the base path
+    :param name: file name
+    :return:
+    """
+    #normalize by l1
+    def norm(values):
+        return values / np.sum(values)
+    spectro = spectro.apply(norm, 1)
+    cam_meas = cam_meas.apply(norm, 1)
+    # otherwise problems with datatype (object v int):
+    cam_meas.columns = spectro.columns
+
+    relative_errors = np.abs((1 - spectro / cam_meas) * 100.)
+    relative_errors.reset_index(inplace=True)
+    mean_errors = np.mean(relative_errors.values, axis=1)
+    for i, index in enumerate(relative_errors["index"]):
+        relative_errors["index"][i] = str(index) + " -- error: " + str(np.round(mean_errors[i], decimals=2)) + "%"
+    relative_errors = pd.melt(relative_errors,
+                              id_vars="index", var_name ="camera_band",
+                              value_name="abs relative error [%]")
+    grid = sns.FacetGrid(relative_errors, col="index", col_wrap=6, ylim=(0, 25))
+    grid.map(plt.bar, "camera_band", "abs relative error [%]")
+    plt.savefig(os.path.join(path, name + "relativ.png"), dpi=250)
+
+    cam_meas.reset_index(inplace=True)
+    cam_meas["device"] = CAMERA
+    spectro.reset_index(inplace=True)
+    spectro["device"] = "Spectrometer"
+
+    df_cam = pd.concat((cam_meas, spectro), ignore_index=True)
+    df_cam = pd.melt(df_cam, id_vars=["index", "device"],
+                 var_name="camera_band", value_name=name + " response")
+    grid = sns.FacetGrid(df_cam, col="index", hue="device", col_wrap=6, ylim=(0., .15))
+    grid.map(plt.plot, "camera_band", name + " response", marker="o", ms=4)
+    grid.add_legend()
+    plt.savefig(os.path.join(path, name), dpi=250)
+
+
 def plot_raw_spectrometer(S, white, dark):
     S_t = S.T
     S_t["dark"] = dark
     S_t["white"] = white
-
     S_t["wavelengths [nm]"] = S_t.index.astype(float) * 10**9
     w = S_t["wavelengths [nm]"].values
     index_w = (w > 400) & (w < 700)
-
     S_t = S_t.iloc[index_w, :]
 
     df = pd.melt(S_t, id_vars=["wavelengths [nm]"],
@@ -162,7 +193,6 @@ def plot_raw_spectrometer(S, white, dark):
     grid = sns.FacetGrid(df, col=EXPERIMENT, col_wrap=6)
     grid.map(plt.plot, "wavelengths [nm]", "raw reflectances",
              marker="o", ms=4)
-
     grid.add_legend()
 
     out_path = os.path.join(sc.get_full_dir("COLOR_TARGET_RESULTS"),
@@ -192,19 +222,18 @@ if __name__ == '__main__':
     C_uncalibrated = pd.DataFrame(cr.get_camera_reflectances_uncorrected(C_folder, suffix='.bsq', pixel_location=pixel_location, size=window_size))
     dark = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "dark.txt"))
     white = sm.get_spectrometer_measurement_df(os.path.join(TOP, "data", "spectrometer", "white.txt"))
-
-    # interpolate the F values to fit the wavelengths recorded
-    # by the spectrometer
-    f = interpolate.interp1d(F.columns, F.values, bounds_error=False, fill_value=0.)
-    F_new_np = f(S.columns)
-    F_new = pd.DataFrame(data=F_new_np, columns=S.columns)
+    pc = cfr.get_principle_components(F_folder)
 
     # use the wavelengths recorded by the spectrometer as basis for the eval
     sc.other["RECORDED_WAVELENGTHS"] = S.columns
 
+    # interpolate the F values to fit the wavelengths recorded
+    # by the spectrometer
+    F_new = cfr.to_wav_df(F.columns, F, S.columns)
+
     # specify tasks
-    plot_spectro_measurements = plot_raw_spectrometer(S, white, dark)
-    plot_imaging_system = plot_imaging_system(F_new, white)
-    plot_mapping = plot_compare(S, C, F_new,
-                                white, dark)
-    plot_raw_camera = plot_raw_camera(C_uncalibrated)
+    plot_raw_spectrometer(S, white, dark)
+    plot_imaging_system(F_new, white)
+    plot_compare(S, C, F_new, white, dark)
+    plot_compare_adapted(S, C, F, white, dark, pc)
+    plot_raw_camera(C_uncalibrated)
