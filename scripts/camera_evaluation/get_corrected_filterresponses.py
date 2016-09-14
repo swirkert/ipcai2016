@@ -47,8 +47,9 @@ def get_corrected_filter_responses_df(S, C, F, w, d, pc):
         # now use the new imaging system to estimate C from S
         C_estimated = transform_color(modified_imaging_system, S_opt,
                                       normalize_color=True)
-        # return quadratic error
-        return np.sum((C_opt-C_estimated)**2)
+        # return residuals
+        residuals = (C_opt - C_estimated).flatten()
+        return residuals
 
     imaging_system = ImagingSystem(F_wav, F, q=None, w=w, d=d)
     # find factors for principle components
